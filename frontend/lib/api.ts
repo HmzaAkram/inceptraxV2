@@ -14,11 +14,15 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
         headers,
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
         throw new Error(data.message || data.error || 'Something went wrong');
     }
 
-    return data;
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/pdf')) {
+        return response.blob();
+    }
+
+    return response.json();
 }

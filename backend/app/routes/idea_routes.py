@@ -1,8 +1,10 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from app.services.idea_analysis_service import IdeaAnalysisService
+from app.services.pdf_service import PDFService
 from app.models.user_model import Idea
 from app.middleware.auth_middleware import token_required
 from app.utils.response_formatter import ResponseFormatter
+import os
 
 idea_bp = Blueprint('idea', __name__)
 
@@ -44,6 +46,31 @@ def get_idea(current_user, idea_id):
         return ResponseFormatter.error("Idea not found", status=404)
     
     return ResponseFormatter.success(data={'idea': idea.to_dict()})
+
+@idea_bp.route('/<int:idea_id>/download', methods=['GET'])
+@token_required
+def download_report(current_user, idea_id):
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+        
+    try:
+        file_path = PDFService.generate_report(idea)
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=f"{idea.title.replace(' ', '_')}-Full-Analysis.pdf"
+        )
+    except Exception as e:
+        return ResponseFormatter.error(f"Failed to generate PDF: {str(e)}", status=500)
+
+@idea_bp.route('/<int:idea_id>', methods=['DELETE'])
+@token_required
+def delete_idea(current_user, idea_id):
+    success = IdeaAnalysisService.delete_idea(idea_id, current_user.id)
+    if success:
+        return ResponseFormatter.success(message="Idea deleted successfully")
+    return ResponseFormatter.error("Idea not found or unauthorized", status=404)
 
 @idea_bp.route('/<int:idea_id>/reanalyze', methods=['POST'])
 @token_required

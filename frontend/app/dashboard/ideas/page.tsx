@@ -3,10 +3,22 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, ArrowRight, Loader2, Lightbulb, Search } from "lucide-react"
+import { Trash2, Plus, ArrowRight, Loader2, Lightbulb, Search } from "lucide-react"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
 import { Input } from "@/components/ui/input"
+import { toast } from "sonner"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface Idea {
     id: number;
@@ -20,6 +32,7 @@ export default function IdeasPage() {
     const [ideas, setIdeas] = useState<Idea[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
+    const [isDeleting, setIsDeleting] = useState<number | null>(null)
 
     useEffect(() => {
         async function fetchIdeas() {
@@ -28,12 +41,26 @@ export default function IdeasPage() {
                 setIdeas(response.data.ideas)
             } catch (error) {
                 console.error("Failed to fetch ideas:", error)
+                toast.error("Failed to load ideas")
             } finally {
                 setIsLoading(false)
             }
         }
         fetchIdeas()
     }, [])
+
+    const handleDelete = async (ideaId: number) => {
+        setIsDeleting(ideaId)
+        try {
+            await apiFetch(`/ideas/${ideaId}`, { method: "DELETE" })
+            setIdeas(prev => prev.filter(idea => idea.id !== ideaId))
+            toast.success("Idea deleted successfully")
+        } catch (error: any) {
+            toast.error(error.message || "Failed to delete idea")
+        } finally {
+            setIsDeleting(null)
+        }
+    }
 
     const filteredIdeas = ideas.filter(idea =>
         idea.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -81,12 +108,44 @@ export default function IdeasPage() {
                                     <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                                         <Lightbulb className="h-5 w-5" />
                                     </div>
-                                    <div className="text-right">
-                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Score</div>
-                                        <div className="text-xl font-bold text-primary">{idea.validation_score || 0}%</div>
+                                    <div className="flex items-center gap-1">
+                                        <div className="text-right mr-3">
+                                            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Score</div>
+                                            <div className="text-xl font-bold text-primary">{idea.validation_score || 0}%</div>
+                                        </div>
+
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                                                    disabled={isDeleting === idea.id}
+                                                >
+                                                    {isDeleting === idea.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent className="bg-background border-border rounded-2xl">
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Delete this idea?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        This action cannot be undone. This will permanently remove "{idea.title}" and all associated analysis data from our servers.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel className="rounded-xl border-border">Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction
+                                                        className="bg-destructive text-white hover:bg-destructive/90 rounded-xl font-semibold"
+                                                        onClick={() => handleDelete(idea.id)}
+                                                    >
+                                                        Delete Permanently
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
                                     </div>
                                 </div>
-                                <CardTitle className="text-xl text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+                                <CardTitle className="text-xl text-foreground line-clamp-1 group-hover:text-primary transition-colors text-ellipsis overflow-hidden">
                                     {idea.title}
                                 </CardTitle>
                                 <div className="text-xs text-muted-foreground">

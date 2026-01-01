@@ -3,10 +3,22 @@
 import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileText, Download, Eye, Calendar, Sparkles, Loader2 } from "lucide-react"
+import { FileText, Download, Eye, Calendar, Sparkles, Loader2, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { apiFetch } from "@/lib/api"
 import Link from "next/link"
+import { toast } from "sonner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface Idea {
   id: number;
@@ -17,6 +29,8 @@ interface Idea {
 export default function ReportsPage() {
   const [ideas, setIdeas] = useState<Idea[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isDownloading, setIsDownloading] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState<number | null>(null)
 
   useEffect(() => {
     async function fetchIdeas() {
@@ -25,12 +39,46 @@ export default function ReportsPage() {
         setIdeas(response.data.ideas)
       } catch (error) {
         console.error("Failed to fetch ideas for reports:", error)
+        toast.error("Failed to load reports")
       } finally {
         setIsLoading(false)
       }
     }
     fetchIdeas()
   }, [])
+
+  const handleDownload = async (ideaId: number, title: string) => {
+    setIsDownloading(ideaId)
+    try {
+      const blob = await apiFetch(`/ideas/${ideaId}/download`)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${title.replace(/\s+/g, '-')}-Full-Analysis.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      toast.success("Report downloaded successfully")
+    } catch (error: any) {
+      toast.error(error.message || "Failed to download report")
+    } finally {
+      setIsDownloading(null)
+    }
+  }
+
+  const handleDelete = async (ideaId: number) => {
+    setIsDeleting(ideaId)
+    try {
+      await apiFetch(`/ideas/${ideaId}`, { method: "DELETE" })
+      setIdeas(prev => prev.filter(idea => idea.id !== ideaId))
+      toast.success("Report deleted successfully")
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete report")
+    } finally {
+      setIsDeleting(null)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -80,9 +128,47 @@ export default function ReportsPage() {
                       <Eye className="h-4 w-4" /> View
                     </Link>
                   </Button>
-                  <Button variant="outline" size="sm" className="rounded-lg gap-2 bg-transparent border-primary/20 text-primary hover:bg-primary/5">
-                    <Download className="h-4 w-4" /> Download
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-lg gap-2 bg-transparent border-primary/20 text-primary hover:bg-primary/5"
+                    onClick={() => handleDownload(idea.id, idea.title)}
+                    disabled={isDownloading === idea.id}
+                  >
+                    {isDownloading === idea.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    Download
                   </Button>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-lg gap-2 bg-transparent border-destructive/20 text-destructive hover:bg-destructive/10 hover:border-destructive hover:text-destructive transition-colors"
+                        disabled={isDeleting === idea.id}
+                      >
+                        {isDeleting === idea.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-background border-border rounded-2xl">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete the report and its associated PDF files from our servers.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl border-border">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-white hover:bg-destructive/90 rounded-xl font-semibold"
+                          onClick={() => handleDelete(idea.id)}
+                        >
+                          Delete Permanently
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             </Card>

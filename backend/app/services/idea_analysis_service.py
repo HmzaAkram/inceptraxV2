@@ -1,4 +1,5 @@
 import os
+from flask import current_app
 import json
 from app.services.gemini_service import GeminiService
 from app.models.user_model import Idea
@@ -88,3 +89,24 @@ class IdeaAnalysisService:
         db.session.add(idea)
         db.session.commit()
         return idea
+
+    @staticmethod
+    def delete_idea(idea_id, user_id):
+        idea = Idea.query.filter_by(id=idea_id, user_id=user_id).first()
+        if not idea:
+            return False
+            
+        # Remove associated PDF if exists
+        reports_dir = os.path.join(current_app.root_path, '..', 'instance', 'reports')
+        filename = f"{idea.title.replace(' ', '_')}_{idea.id}_Analysis.pdf"
+        file_path = os.path.join(reports_dir, filename)
+        
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                print(f"Error deleting PDF file: {e}")
+                
+        db.session.delete(idea)
+        db.session.commit()
+        return True
