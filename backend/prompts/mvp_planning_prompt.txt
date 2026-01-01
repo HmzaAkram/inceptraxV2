@@ -1,0 +1,24 @@
+Create a detailed MVP (Minimum Viable Product) blueprint for the following startup idea:
+Title: {title}
+Description: {description}
+Problem: {problem}
+Solution: {solution}
+
+Your response should include:
+1. Core features for V1
+2. Technical stack recommendation
+3. 4-week development roadmap
+4. Key metrics to track (KPIs)
+5. User Persona definition
+
+Return the response in structured JSON.
+{{
+    "core_features": ["...", "..."],
+    "tech_stack": {{ "frontend": "...", "backend": "...", "database": "...", "infra": "..." }},
+    "roadmap": [
+        {{ "week": 1, "goal": "...", "tasks": ["...", "..."] }},
+        ...
+    ],
+    "kpis": ["...", "..."],
+    "user_persona": {{ "name": "...", "role": "...", "pains": ["...", "..."], "gains": ["...", "..."] }}
+}}

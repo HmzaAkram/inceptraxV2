@@ -47,7 +47,7 @@ export default function AboutPage() {
                 <div key={name} className="flex flex-col items-center text-center group">
                   <div className="w-32 h-32 rounded-full bg-muted mb-4 border-2 border-transparent group-hover:border-primary transition-all overflow-hidden relative">
                     <img
-                      src={`/portrait-of-.jpg?key=tkww7&height=128&width=128&query=Portrait+of+${name.replace(" ", "+")}`}
+                      src={`/placeholder-user.jpg?key=tkww7&height=128&width=128&query=Portrait+of+${name.replace(" ", "+")}`}
                       alt={name}
                       className="object-cover"
                     />

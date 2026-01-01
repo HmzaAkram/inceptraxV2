@@ -1,0 +1,48 @@
+Validate the following startup idea:
+Title: {title}
+Description: {description}
+Problem: {problem}
+Solution: {solution}
+Target Audience: {audience}
+Market: {market}
+
+Provide a detailed analysis including:
+1. Overall Validation Score (0-100)
+2. Market Demand (High, Medium, Low) and Score (0-100)
+3. Problem Severity (None, Mild, Severe) and Score (0-100)
+4. Growth Potential (Low, Moderate, Strong) and Score (0-100)
+5. 4 Key Strengths
+6. 4 Key Risks & Challenges
+7. A concise AI Recommendation (Executive Summary)
+8. Market Research (TAM, SAM, SOM)
+9. Competitor Analysis (at least 3 competitors with strengths and weaknesses)
+
+Return the response in the following JSON format:
+{{
+    "overall_score": 85,
+    "scores": {{
+        "market_demand": {{ "label": "High", "value": 88 }},
+        "problem_severity": {{ "label": "Severe", "value": 75 }},
+        "growth_potential": {{ "label": "Strong", "value": 92 }}
+    }},
+    "strengths": ["...", "...", "...", "..."],
+    "risks": ["...", "...", "...", "..."],
+    "recommendation": "...",
+    "market_research": {{
+        "tam": "$12.4B",
+        "sam": "$2.8B",
+        "som": "$450M",
+        "trends": [
+            {{ "title": "...", "description": "..." }},
+            ...
+        ],
+        "segments": [
+            {{ "name": "...", "description": "...", "percentage": "45%", "wtp": "High" }},
+            ...
+        ]
+    }},
+    "competitors": [
+        {{ "name": "...", "type": "Direct/Indirect", "threat": "High/Medium/Low", "strengths": ["...", "..."], "weaknesses": ["...", "..."] }},
+        ...
+    ]
+}}
