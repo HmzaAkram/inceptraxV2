@@ -7,7 +7,7 @@ import "./globals.css"
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
-// Cleaned metadata without any v0 reference
+
 export const metadata: Metadata = {
   title: "Inceptrax - Transform Ideas into Business Plans",
   description:
