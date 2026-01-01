@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
-import { Sparkles, ArrowRight, ArrowLeft, Check, Lightbulb, Users, Target } from "lucide-react"
+import { Sparkles, ArrowRight, ArrowLeft, Check, Lightbulb, Users, Target, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api"
+import { toast } from "sonner"
 
 const steps = [
   { id: 1, name: "The Idea", icon: Lightbulb },
@@ -21,15 +23,38 @@ export default function NewIdeaPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleNext = () => {
+  // Form State
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    problem: "",
+    solution: "",
+    audience: "",
+    market: "",
+  })
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target
+    setFormData((prev) => ({ ...prev, [id]: value }))
+  }
+
+  const handleNext = async () => {
     if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1)
     } else {
       setIsSubmitting(true)
-      // Simulate AI analysis delay
-      setTimeout(() => {
-        router.push("/dashboard/idea/1/validation")
-      }, 2000)
+      try {
+        const response = await apiFetch("/ideas/", {
+          method: "POST",
+          body: JSON.stringify(formData),
+        })
+
+        toast.success("Idea analyzed successfully!")
+        router.push(`/dashboard/idea/${response.data.idea.id}/validation`)
+      } catch (error: any) {
+        toast.error(error.message || "Failed to analyze idea")
+        setIsSubmitting(false)
+      }
     }
   }
 
@@ -77,19 +102,29 @@ export default function NewIdeaPage() {
           {currentStep === 1 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="space-y-2">
-                <Label htmlFor="title" className="text-base">
+                <Label htmlFor="title" className="text-base font-semibold">
                   Startup Name / Working Title
                 </Label>
-                <Input id="title" placeholder="e.g. AI Coffee Roaster" className="h-12 rounded-xl text-lg" />
+                <Input
+                  id="title"
+                  placeholder="e.g. AI Coffee Roaster"
+                  className="h-12 rounded-xl text-lg"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  required
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-base">
+                <Label htmlFor="description" className="text-base font-semibold">
                   One-sentence Pitch
                 </Label>
                 <Textarea
                   id="description"
                   placeholder="Describe your idea in a nutshell..."
                   className="min-h-[100px] rounded-xl resize-none text-lg"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  required
                 />
               </div>
             </div>
@@ -98,23 +133,29 @@ export default function NewIdeaPage() {
           {currentStep === 2 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="space-y-2">
-                <Label htmlFor="problem" className="text-base">
+                <Label htmlFor="problem" className="text-base font-semibold">
                   What problem are you solving?
                 </Label>
                 <Textarea
                   id="problem"
                   placeholder="Explain the pain point..."
                   className="min-h-[120px] rounded-xl resize-none"
+                  value={formData.problem}
+                  onChange={handleInputChange}
+                  required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="solution" className="text-base">
+                <Label htmlFor="solution" className="text-base font-semibold">
                   How does your product solve it?
                 </Label>
                 <Textarea
                   id="solution"
                   placeholder="Explain the solution..."
                   className="min-h-[120px] rounded-xl resize-none"
+                  value={formData.solution}
+                  onChange={handleInputChange}
+                  required
                 />
               </div>
             </div>
@@ -123,38 +164,47 @@ export default function NewIdeaPage() {
           {currentStep === 3 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="space-y-2">
-                <Label htmlFor="audience" className="text-base">
+                <Label htmlFor="audience" className="text-base font-semibold">
                   Who is your ideal customer?
                 </Label>
                 <Textarea
                   id="audience"
                   placeholder="e.g. Tech-savvy homeowners, B2B SaaS founders..."
                   className="min-h-[120px] rounded-xl resize-none"
+                  value={formData.audience}
+                  onChange={handleInputChange}
+                  required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="market" className="text-base">
+                <Label htmlFor="market" className="text-base font-semibold">
                   Any specific market or region? (Optional)
                 </Label>
-                <Input id="market" placeholder="e.g. North America, Global, Healthcare" className="h-12 rounded-xl" />
+                <Input
+                  id="market"
+                  placeholder="e.g. North America, Global, Healthcare"
+                  className="h-12 rounded-xl"
+                  value={formData.market}
+                  onChange={handleInputChange}
+                />
               </div>
             </div>
           )}
 
-          <div className="flex items-center justify-between mt-12 pt-8 border-t">
+          <div className="flex items-center justify-between mt-12 pt-8 border-t border-border/50">
             <Button
               variant="ghost"
               onClick={handleBack}
               disabled={currentStep === 1 || isSubmitting}
-              className="rounded-xl h-11 px-6"
+              className="rounded-xl h-11 px-6 font-medium"
             >
               <ArrowLeft className="h-4 w-4 mr-2" /> Back
             </Button>
 
-            <Button onClick={handleNext} disabled={isSubmitting} className="rounded-xl h-11 px-8 min-w-[140px]">
+            <Button onClick={handleNext} disabled={isSubmitting} className="rounded-xl h-11 px-8 min-w-[140px] font-semibold">
               {isSubmitting ? (
                 <span className="flex items-center gap-2">
-                  <div className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Analyzing...
                 </span>
               ) : (

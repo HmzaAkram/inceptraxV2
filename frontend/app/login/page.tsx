@@ -1,10 +1,38 @@
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Sparkles, ArrowLeft } from "lucide-react"
+import { Sparkles, ArrowLeft, Loader2 } from "lucide-react"
+import { apiFetch } from "@/lib/api"
+import { useAuth } from "@/components/auth-provider"
+import { toast } from "sonner"
 
 export default function LoginPage() {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const { login } = useAuth()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    try {
+      const data = await apiFetch("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      })
+      login(data.token, data.user)
+      toast.success("Login successful!")
+    } catch (error: any) {
+      toast.error(error.message || "Failed to login")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="flex min-h-screen">
       {/* Left Side: Branding/Content */}
@@ -32,8 +60,8 @@ export default function LoginPage() {
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-white/20" />
             <div>
-              <p className="font-semibold text-sm">Sarah Jenkins</p>
-              <p className="text-primary-foreground/60 text-xs">Founder, TechStream</p>
+              <p className="font-semibold text-sm">Hamza</p>
+              <p className="text-primary-foreground/60 text-xs">Founder, Inceptrax</p>
             </div>
           </div>
         </div>
@@ -58,10 +86,18 @@ export default function LoginPage() {
             <p className="text-muted-foreground">Enter your credentials to access your dashboard</p>
           </div>
 
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <Label htmlFor="email">Email address</Label>
-              <Input id="email" type="email" placeholder="name@company.com" required className="h-11 rounded-xl" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@company.com"
+                required
+                className="h-11 rounded-xl"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -74,10 +110,24 @@ export default function LoginPage() {
                   Forgot password?
                 </Link>
               </div>
-              <Input id="password" type="password" required className="h-11 rounded-xl" />
+              <Input
+                id="password"
+                type="password"
+                required
+                className="h-11 rounded-xl"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
-            <Button type="submit" className="w-full h-11 rounded-xl text-base font-semibold" asChild>
-              <Link href="/dashboard">Sign In</Link>
+            <Button type="submit" className="w-full h-11 rounded-xl text-base font-semibold" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                "Sign In"
+              )}
             </Button>
           </form>
 

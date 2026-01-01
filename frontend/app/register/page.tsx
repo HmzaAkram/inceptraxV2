@@ -1,10 +1,45 @@
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Sparkles, ArrowLeft, Check } from "lucide-react"
+import { Sparkles, ArrowLeft, Check, Loader2 } from "lucide-react"
+import { apiFetch } from "@/lib/api"
+import { useAuth } from "@/components/auth-provider"
+import { toast } from "sonner"
 
 export default function RegisterPage() {
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const { login } = useAuth()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    try {
+      const data = await apiFetch("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          password
+        }),
+      })
+      login(data.token, data.user)
+      toast.success("Account created successfully!")
+    } catch (error: any) {
+      toast.error(error.message || "Failed to register")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="flex min-h-screen">
       {/* Left Side: Features Checklist */}
@@ -62,20 +97,42 @@ export default function RegisterPage() {
             <p className="text-muted-foreground">Start your 14-day free trial. No credit card required.</p>
           </div>
 
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="first-name">First name</Label>
-                <Input id="first-name" placeholder="Jane" required className="h-11 rounded-xl" />
+                <Input
+                  id="first-name"
+                  placeholder="Jane"
+                  required
+                  className="h-11 rounded-xl"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="last-name">Last name</Label>
-                <Input id="last-name" placeholder="Doe" required className="h-11 rounded-xl" />
+                <Input
+                  id="last-name"
+                  placeholder="Doe"
+                  required
+                  className="h-11 rounded-xl"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email address</Label>
-              <Input id="email" type="email" placeholder="name@company.com" required className="h-11 rounded-xl" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@company.com"
+                required
+                className="h-11 rounded-xl"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
@@ -85,10 +142,19 @@ export default function RegisterPage() {
                 placeholder="At least 8 characters"
                 required
                 className="h-11 rounded-xl"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <Button type="submit" className="w-full h-11 rounded-xl text-base font-semibold mt-4" asChild>
-              <Link href="/dashboard">Create Account</Link>
+            <Button type="submit" className="w-full h-11 rounded-xl text-base font-semibold mt-4" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                "Create Account"
+              )}
             </Button>
           </form>
 

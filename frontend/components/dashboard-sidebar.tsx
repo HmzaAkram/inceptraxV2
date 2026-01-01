@@ -23,14 +23,18 @@ const navigation = [
   { name: "Reports", href: "/dashboard/reports", icon: FileText },
 ]
 
-const analysisLinks = [
-  { name: "Validation", href: "/dashboard/idea/1/validation", icon: Sparkles },
-  { name: "Market Research", href: "/dashboard/idea/1/market", icon: Search },
-  { name: "Competitors", href: "/dashboard/idea/1/competitors", icon: Target },
-]
-
 export function DashboardSidebar() {
   const pathname = usePathname()
+
+  // Extract idea ID from pathname if present (e.g., /dashboard/idea/123/validation)
+  const ideaMatch = pathname.match(/\/dashboard\/idea\/(\d+)/)
+  const currentIdeaId = ideaMatch ? ideaMatch[1] : null
+
+  const analysisLinks = currentIdeaId ? [
+    { name: "Validation", href: `/dashboard/idea/${currentIdeaId}/validation`, icon: Sparkles },
+    { name: "Market Research", href: `/dashboard/idea/${currentIdeaId}/market`, icon: Search },
+    { name: "Competitors", href: `/dashboard/idea/${currentIdeaId}/competitors`, icon: Target },
+  ] : []
 
   return (
     <div className="flex flex-col h-full bg-card border-r border-border w-64 shrink-0 overflow-y-auto">
@@ -43,7 +47,7 @@ export function DashboardSidebar() {
 
       <div className="flex-grow px-4 space-y-8">
         <div>
-          <Button asChild className="w-full justify-start gap-2 mb-6" size="lg">
+          <Button asChild className="w-full justify-start gap-2 mb-6 rounded-xl" size="lg">
             <Link href="/dashboard/new-idea">
               <PlusCircle className="h-5 w-5" />
               New Idea
@@ -70,28 +74,30 @@ export function DashboardSidebar() {
           </nav>
         </div>
 
-        <div>
-          <p className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-            Latest Analysis
-          </p>
-          <nav className="space-y-1">
-            {analysisLinks.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-xl transition-colors",
-                  pathname.startsWith(item.href)
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                <item.icon className="h-5 w-5 shrink-0" />
-                {item.name}
-              </Link>
-            ))}
-          </nav>
-        </div>
+        {analysisLinks.length > 0 && (
+          <div>
+            <p className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+              Current Analysis
+            </p>
+            <nav className="space-y-1">
+              {analysisLinks.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-xl transition-colors",
+                    pathname.startsWith(item.href)
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  {item.name}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        )}
       </div>
 
       <div className="p-4 border-t border-border space-y-1">
