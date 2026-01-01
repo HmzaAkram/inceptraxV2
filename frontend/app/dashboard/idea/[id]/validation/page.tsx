@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, AlertCircle, TrendingUp, ThumbsUp, Target, Loader2 } from "lucide-react"
 import { apiFetch } from "@/lib/api"
+import { ExpandableText } from "@/components/ui/expandable-text"
 
 export default function IdeaValidationPage() {
   const params = useParams()
@@ -123,7 +124,8 @@ export default function IdeaValidationPage() {
                 <div className="h-5 w-5 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center shrink-0 mt-0.5">
                   <CheckCircle2 className="h-3 w-3" />
                 </div>
-                <span>{strength}</span>
+                <ExpandableText text={strength} />
+
               </div>
             ))}
           </CardContent>
@@ -141,7 +143,8 @@ export default function IdeaValidationPage() {
                 <div className="h-5 w-5 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 mt-0.5">
                   <AlertCircle className="h-3 w-3" />
                 </div>
-                <span>{risk}</span>
+                <ExpandableText text={risk} />
+
               </div>
             ))}
           </CardContent>

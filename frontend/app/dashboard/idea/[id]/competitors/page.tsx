@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ShieldCheck, ShieldAlert, Zap, Loader2 } from "lucide-react"
 import { apiFetch } from "@/lib/api"
+import { ExpandableText } from "@/components/ui/expandable-text"
 
 export default function CompetitorAnalysisPage() {
   const params = useParams()
@@ -36,7 +37,7 @@ export default function CompetitorAnalysisPage() {
 
   if (!idea || !idea.analysis_data) {
     return (
-      <div className="text-center py-20 text-foreground">
+      <div className="text-center py-20">
         <h2 className="text-2xl font-bold">Competitor Analysis not found</h2>
       </div>
     )
@@ -45,63 +46,95 @@ export default function CompetitorAnalysisPage() {
   const competitors = idea.analysis_data.competitors
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Competitor Analysis</h1>
-          <p className="text-muted-foreground mt-1">Understanding the competitive landscape for {idea.title}.</p>
-        </div>
+    <div className="space-y-8 max-w-6xl mx-auto">
+      <div>
+        <h1 className="text-3xl font-bold">Competitor Analysis</h1>
+        <p className="text-muted-foreground mt-1">
+          Understanding the competitive landscape for {idea.title}.
+        </p>
       </div>
 
-      <div className="grid gap-6">
+      <div className="space-y-6">
         {competitors.map((comp: any) => (
-          <Card key={comp.name} className="border-none shadow-sm overflow-hidden bg-card/50">
-            <div className="grid md:grid-cols-4 divide-x divide-border">
-              <div className="p-6 flex flex-col justify-center">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="font-bold text-xl text-foreground">{comp.name}</h3>
-                  <Badge variant={comp.type === "Direct" ? "default" : "secondary"}>{comp.type}</Badge>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Threat Level:</span>
-                  <span className={comp.threat === "High" ? "text-destructive font-bold" : "text-amber-500 font-bold"}>
-                    {comp.threat}
-                  </span>
+          <Card
+            key={comp.name}
+            className="border border-border shadow-sm bg-card"
+          >
+            <CardContent className="p-6 space-y-6">
+              {/* HEADER */}
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-xl font-bold">{comp.name}</h3>
+                    <Badge variant={comp.type === "Direct" ? "default" : "secondary"}>
+                      {comp.type}
+                    </Badge>
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Threat Level: </span>
+                    <span
+                      className={
+                        comp.threat === "High"
+                          ? "text-destructive font-bold"
+                          : "text-amber-500 font-bold"
+                      }
+                    >
+                      {comp.threat}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="p-6 md:col-span-3 grid md:grid-cols-2 gap-8">
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <ShieldCheck className="h-3.5 w-3.5 text-green-500" /> Strengths
+
+              {/* STRENGTHS & WEAKNESSES */}
+              <div className="grid md:grid-cols-2 gap-8">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-3">
+                    <ShieldCheck className="h-4 w-4 text-green-500" />
+                    Strengths
                   </h4>
-                  <ul className="space-y-2">
-                    {comp.strengths.map((s: string) => (
-                      <li key={s} className="text-sm flex items-start gap-2 text-muted-foreground">
-                        <div className="h-1 w-1 rounded-full bg-border mt-2" />
-                        {s}
+
+                  <ul className="space-y-3">
+                    {comp.strengths.map((s: string, i: number) => (
+                      <li
+                        key={i}
+                        className="flex gap-3 items-start text-sm text-muted-foreground"
+                      >
+                        <span className="mt-2 h-2 w-2 rounded-full bg-green-500 shrink-0" />
+                        <div className="min-w-0">
+                          <ExpandableText text={s} lines={2} />
+                        </div>
                       </li>
                     ))}
                   </ul>
                 </div>
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <ShieldAlert className="h-3.5 w-3.5 text-amber-500" /> Weaknesses
+
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-3">
+                    <ShieldAlert className="h-4 w-4 text-amber-500" />
+                    Weaknesses
                   </h4>
-                  <ul className="space-y-2">
-                    {comp.weaknesses.map((w: string) => (
-                      <li key={w} className="text-sm flex items-start gap-2 text-muted-foreground">
-                        <div className="h-1 w-1 rounded-full bg-border mt-2" />
-                        {w}
+
+                  <ul className="space-y-3">
+                    {comp.weaknesses.map((w: string, i: number) => (
+                      <li
+                        key={i}
+                        className="flex gap-3 items-start text-sm text-muted-foreground"
+                      >
+                        <span className="mt-2 h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                        <div className="min-w-0">
+                          <ExpandableText text={w} lines={2} />
+                        </div>
                       </li>
                     ))}
                   </ul>
                 </div>
               </div>
-            </div>
+            </CardContent>
           </Card>
         ))}
       </div>
 
+      {/* EDGE */}
       <Card className="border-none shadow-sm bg-secondary text-secondary-foreground">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -110,7 +143,9 @@ export default function CompetitorAnalysisPage() {
         </CardHeader>
         <CardContent>
           <p className="leading-relaxed font-medium">
-            Based on the analysis of {competitors.length} competitors, your unique advantage lies in the specific solution proposed for {idea.title}.
+            Based on the analysis of {competitors.length} competitors, your
+            unique advantage lies in the specific solution proposed for{" "}
+            {idea.title}.
           </p>
         </CardContent>
       </Card>

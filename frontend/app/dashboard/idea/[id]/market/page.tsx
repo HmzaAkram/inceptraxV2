@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Globe, Users, Loader2 } from "lucide-react"
 import { apiFetch } from "@/lib/api"
+import { ExpandableText } from "@/components/ui/expandable-text"
 
 export default function MarketResearchPage() {
   const params = useParams()
@@ -48,41 +49,61 @@ export default function MarketResearchPage() {
     <div className="space-y-8 max-w-5xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Market Research</h1>
-          <p className="text-muted-foreground mt-1">Deep-dive into the target market for {idea.title}.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            Market Research
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Deep-dive into the target market for {idea.title}.
+          </p>
         </div>
       </div>
 
+      {/* TAM / SAM / SOM */}
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="border-none shadow-sm bg-card/50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">TAM</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+              TAM
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{market.tam}</div>
-            <p className="text-xs text-muted-foreground mt-1">Total Addressable Market</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Total Addressable Market
+            </p>
           </CardContent>
         </Card>
+
         <Card className="border-none shadow-sm bg-card/50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">SAM</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+              SAM
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{market.sam}</div>
-            <p className="text-xs text-muted-foreground mt-1">Serviceable Addressable Market</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Serviceable Addressable Market
+            </p>
           </CardContent>
         </Card>
+
         <Card className="border-none shadow-sm bg-card/50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">SOM</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+              SOM
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{market.som}</div>
-            <p className="text-xs text-muted-foreground mt-1">Serviceable Obtainable Market</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Serviceable Obtainable Market
+            </p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Trends & Segments */}
       <div className="grid gap-8 lg:grid-cols-2">
         <Card className="border-none shadow-sm">
           <CardHeader>
@@ -93,9 +114,13 @@ export default function MarketResearchPage() {
           <CardContent className="space-y-6">
             {market.trends.map((trend: any, i: number) => (
               <div key={i} className="space-y-2">
-                <h3 className="font-semibold text-sm text-foreground">{trend.title}</h3>
+                <h3 className="font-semibold text-sm text-foreground">
+                  {trend.title}
+                </h3>
+
+                {/* ONLY THIS LINE CHANGED */}
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  {trend.description}
+                  <ExpandableText text={trend.description} />
                 </p>
               </div>
             ))}
@@ -110,11 +135,19 @@ export default function MarketResearchPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             {market.segments.map((segment: any, i: number) => (
-              <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border">
-                <h3 className="font-semibold text-sm mb-1 text-foreground">{segment.name}</h3>
+              <div
+                key={i}
+                className="p-4 rounded-xl bg-muted/30 border border-border"
+              >
+                <h3 className="font-semibold text-sm mb-1 text-foreground">
+                  {segment.name}
+                </h3>
+
+                {/* ONLY THIS LINE CHANGED */}
                 <p className="text-xs text-muted-foreground mb-3">
-                  {segment.description}
+                  <ExpandableText text={segment.description} />
                 </p>
+
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary" className="text-[10px] py-0">
                     {segment.percentage} Segment
