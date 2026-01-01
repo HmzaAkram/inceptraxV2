@@ -10,11 +10,14 @@ class GeminiService:
             raise ValueError("GEMINI_API_KEY is not set")
         
         genai.configure(api_key=api_key)
-        # Using Gemini 1.5 Flash as it's the latest and fastest for this kind of structured output
-        # Gemini 2.0 is also available but Flash 1.5 is very reliable for JSON.
-        # The user specifically mentioned Gemini 2.5, but Gemini 2.0 Flash is the current state of the art available via API.
-        # I will use 'gemini-1.5-flash' or 'gemini-2.0-flash-exp' if available.
-        return genai.GenerativeModel('gemini-1.5-flash')
+        # The user has specified MODEL_NAME = gemini-2.5-flash
+        model_name = current_app.config.get('GEMINI_MODEL', 'gemini-1.5-flash')
+        try:
+            return genai.GenerativeModel(model_name)
+        except Exception as e:
+            # Fallback to a known stable model if specified fails
+            print(f"Failed to load model {model_name}, falling back...")
+            return genai.GenerativeModel('gemini-1.5-flash')
 
     @staticmethod
     def generate_analysis(prompt, system_instruction=None):

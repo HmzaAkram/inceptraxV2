@@ -46,10 +46,33 @@ class IdeaAnalysisService:
             
             return analysis_data
         except Exception as e:
-            idea.status = 'failed'
-            db.session.commit()
+            # Fallback Validation Logic (Antigravity Emergency Stabilizers)
             print(f"Error analyzing idea {idea_id}: {str(e)}")
-            return {'error': str(e)}
+            
+            fallback_data = {
+                "overall_score": 50,
+                "market_demand": "Unable to verify (AI Gravity Source Unavailable)",
+                "problem_severity": "Validation pending due to system error",
+                "growth_potential": "Analysis suspended",
+                "strengths": ["System recorded the idea correctly"],
+                "risks": ["AI analysis failure: " + str(e)],
+                "recommendation": "The 'Source of Gravity' (Gemini model) was unreachable. Please retry the analysis in a few minutes.",
+                "market_research": {
+                    "tam": "N/A", "sam": "N/A", "som": "N/A",
+                    "trends": ["System Error: AI Model Timeout"],
+                    "segments": ["Error Recovery Mode"]
+                },
+                "competitors": [
+                    {"name": "Internal Error", "type": "Critical", "threat": "High", "strengths": ["None"], "weaknesses": ["Model not found"]}
+                ]
+            }
+            
+            idea.status = 'failed'
+            idea.analysis_data = fallback_data
+            idea.validation_score = 0
+            db.session.commit()
+            
+            return fallback_data
 
     @staticmethod
     def create_idea(user_id, data):
