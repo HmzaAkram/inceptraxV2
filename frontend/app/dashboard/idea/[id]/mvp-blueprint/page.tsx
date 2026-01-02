@@ -65,24 +65,25 @@ export default function MVPBlueprintPage() {
                     <div className="grid gap-4">
                         {blueprint.map((feature: any, i: number) => (
                             <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div className="space-y-1 max-w-xl">
+                                <div className="space-y-1 max-w-xl break-words overflow-wrap-anywhere">
                                     <div className="flex items-center gap-2">
-                                        <h3 className="font-bold text-foreground">{feature.feature_name}</h3>
-                                        <Badge variant="secondary" className="text-[10px] py-0 px-2 bg-primary/10 text-primary border-none">
+                                        <h3 className="font-bold text-foreground break-words">{feature.feature_name}</h3>
+                                        <Badge variant="secondary" className="text-[10px] py-0 px-2 bg-primary/10 text-primary border-none whitespace-nowrap">
                                             {feature.ai_capability}
                                         </Badge>
                                     </div>
-                                    <p className="text-sm text-muted-foreground">{feature.problem_solved}</p>
+                                    <p className="text-sm text-muted-foreground break-words overflow-wrap-anywhere">
+                                        {feature.problem_solved}
+                                    </p>
                                 </div>
                                 <div className="flex items-center gap-4 shrink-0">
                                     <div className="text-right">
                                         <p className="text-[10px] font-bold uppercase text-muted-foreground">Priority</p>
-                                        <Badge variant={feature.priority === "Must-have" ? "default" : "outline"} className="text-[10px]">
+                                        <Badge variant={feature.priority === "Must-have" ? "default" : "outline"} className="text-[10px] whitespace-nowrap">
                                             {feature.priority}
                                         </Badge>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-[10px] font-bold uppercase text-muted-foreground">Value</p>
+                                    <div className="text-right max-w-[100px] break-words">
                                         <p className="text-sm font-bold text-foreground">{feature.business_value}</p>
                                     </div>
                                 </div>
