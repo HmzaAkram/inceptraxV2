@@ -1,11 +1,20 @@
+"use client";
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { ArrowRight, Search, BarChart3, Users, Target, Rocket, CheckCircle2 } from "lucide-react"
 import { Logo } from "@/components/logo"
+import CountUp from "react-countup"
 
 export default function LandingPage() {
+  const stats = [
+    { name: "Ideas Validated", value: 1240, icon: CheckCircle2 },
+    { name: "Reports Generated", value: 5380, icon: BarChart3 },
+    { name: "Founders Joined", value: 5023, icon: Users },
+  ]
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
@@ -22,8 +31,7 @@ export default function LandingPage() {
               Turn your raw ideas into <span className="text-primary">actionable</span> business plans
             </h1>
             <p className="max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground text-pretty mb-10">
-              Stop guessing. Use AI to validate your startup ideas, research markets, analyze competitors, and plan your
-              MVP in minutes.
+              Stop guessing. Use AI to validate your startup ideas, research markets, analyze competitors, and plan your MVP in minutes.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button size="lg" className="h-12 px-8 text-base gap-2" asChild>
@@ -35,13 +43,26 @@ export default function LandingPage() {
                 <Link href="/features">View All Features</Link>
               </Button>
             </div>
+
+            {/* Hero Metrics */}
+            <div className="mt-16 flex flex-wrap justify-center gap-6">
+              {stats.map((stat) => (
+                <div key={stat.name} className="flex flex-col items-center bg-card/50 rounded-xl p-6 shadow-md w-40">
+                  <stat.icon className="h-6 w-6 text-primary mb-2" />
+                  <div className="text-2xl font-bold text-foreground">
+                    <CountUp end={stat.value} duration={1.5} separator="," />
+                  </div>
+                  <span className="text-sm text-muted-foreground">{stat.name}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Background Decoration */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl -z-10" />
         </section>
 
-        {/* Features Preview (Bento Grid) */}
+        {/* Features Section */}
         <section className="py-24 bg-muted/30">
           <div className="container px-4">
             <div className="text-center mb-16">
@@ -52,71 +73,23 @@ export default function LandingPage() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {/* Idea Validation */}
-              <div className="group p-8 rounded-2xl border border-border bg-card hover:border-primary/50 transition-all">
-                <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <CheckCircle2 className="h-6 w-6" />
+              {[
+                { icon: CheckCircle2, title: "Idea Validation", desc: "Analyze problem-solution fit and get a realistic validation score based on market data." },
+                { icon: Search, title: "Market Research", desc: "Instant deep-dives into industry trends, market size (TAM/SAM/SOM), and growth potential." },
+                { icon: Target, title: "Competitor Analysis", desc: "Identify direct and indirect competitors, their strengths, and your unique value proposition." },
+                { icon: Users, title: "Target Audience", desc: "Generate detailed user personas and understand their pain points and buying behaviors." },
+                { icon: Rocket, title: "MVP Planning", desc: "Define core features for your minimum viable product to launch faster with less waste." },
+                { icon: BarChart3, title: "GTM Strategy", desc: "Craft a winning go-to-market plan with marketing channels and strategic launch positioning." },
+              ].map((feature) => (
+                <div key={feature.title} className="group p-8 rounded-2xl border border-border bg-card hover:border-primary/50 transition-all relative overflow-hidden">
+                  <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <feature.icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-3 text-foreground">{feature.title}</h3>
+                  <p className="text-muted-foreground leading-relaxed">{feature.desc}</p>
+                  <span className="absolute top-4 right-4 px-2 py-1 bg-primary/20 text-primary text-xs rounded-full">New</span>
                 </div>
-                <h3 className="text-xl font-bold mb-3 text-foreground">Idea Validation</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Analyze problem-solution fit and get a realistic validation score based on market data.
-                </p>
-              </div>
-
-              {/* Market Research */}
-              <div className="group p-8 rounded-2xl border border-border bg-card hover:border-primary/50 transition-all">
-                <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Search className="h-6 w-6" />
-                </div>
-                <h3 className="text-xl font-bold mb-3 text-foreground">Market Research</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Instant deep-dives into industry trends, market size (TAM/SAM/SOM), and growth potential.
-                </p>
-              </div>
-
-              {/* Competitor Analysis */}
-              <div className="group p-8 rounded-2xl border border-border bg-card hover:border-primary/50 transition-all">
-                <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Target className="h-6 w-6" />
-                </div>
-                <h3 className="text-xl font-bold mb-3 text-foreground">Competitor Analysis</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Identify direct and indirect competitors, their strengths, and your unique value proposition.
-                </p>
-              </div>
-
-              {/* Target Audience */}
-              <div className="group p-8 rounded-2xl border border-border bg-card hover:border-primary/50 transition-all">
-                <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Users className="h-6 w-6" />
-                </div>
-                <h3 className="text-xl font-bold mb-3 text-foreground">Target Audience</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Generate detailed user personas and understand their pain points and buying behaviors.
-                </p>
-              </div>
-
-              {/* MVP Planning */}
-              <div className="group p-8 rounded-2xl border border-border bg-card hover:border-primary/50 transition-all">
-                <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Rocket className="h-6 w-6" />
-                </div>
-                <h3 className="text-xl font-bold mb-3 text-foreground">MVP Planning</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Define core features for your minimum viable product to launch faster with less waste.
-                </p>
-              </div>
-
-              {/* GTM Strategy */}
-              <div className="group p-8 rounded-2xl border border-border bg-card hover:border-primary/50 transition-all">
-                <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <BarChart3 className="h-6 w-6" />
-                </div>
-                <h3 className="text-xl font-bold mb-3 text-foreground">GTM Strategy</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Craft a winning go-to-market plan with marketing channels and strategic launch positioning.
-                </p>
-              </div>
+              ))}
             </div>
           </div>
         </section>

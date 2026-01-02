@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import { apiFetch } from "@/lib/api"
 import Link from "next/link"
 import { toast } from "sonner"
+import JSZip from "jszip"
+import { saveAs } from "file-saver"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,9 +23,9 @@ import {
 } from "@/components/ui/alert-dialog"
 
 interface Idea {
-  id: number;
-  title: string;
-  created_at: string;
+  id: number
+  title: string
+  created_at: string
 }
 
 export default function ReportsPage() {
@@ -31,6 +33,7 @@ export default function ReportsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isDownloading, setIsDownloading] = useState<number | null>(null)
   const [isDeleting, setIsDeleting] = useState<number | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
 
   useEffect(() => {
     async function fetchIdeas() {
@@ -67,6 +70,29 @@ export default function ReportsPage() {
     }
   }
 
+  // ZIP Export All PDFs
+  const handleExportAll = async () => {
+    if (ideas.length === 0) {
+      toast.error("No reports to export")
+      return
+    }
+    setIsExporting(true)
+    try {
+      const zip = new JSZip()
+      for (const idea of ideas) {
+        const blob: Blob = await apiFetch(`/ideas/${idea.id}/download`)
+        zip.file(`${idea.title.replace(/\s+/g, '-')}-Full-Analysis.pdf`, blob)
+      }
+      const content = await zip.generateAsync({ type: "blob" })
+      saveAs(content, "All_Idea_Reports.zip")
+      toast.success("All reports exported successfully")
+    } catch (error: any) {
+      toast.error(error.message || "Failed to export reports")
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   const handleDelete = async (ideaId: number) => {
     setIsDeleting(ideaId)
     try {
@@ -95,8 +121,17 @@ export default function ReportsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Reports & Insights</h1>
           <p className="text-muted-foreground mt-1">Access and export your generated AI analysis reports.</p>
         </div>
-        <Button className="rounded-xl gap-2 font-semibold">
-          <Download className="h-4 w-4" /> Export All Data
+        <Button
+          className="rounded-xl gap-2 font-semibold"
+          onClick={handleExportAll}
+          disabled={isExporting}
+        >
+          {isExporting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}{" "}
+          Export All Data
         </Button>
       </div>
 
@@ -179,22 +214,6 @@ export default function ReportsPage() {
           </div>
         )}
       </div>
-
-      <Card className="border-none shadow-sm bg-muted/50 border border-dashed border-border p-12 text-center">
-        <div className="max-w-md mx-auto space-y-4">
-          <div className="h-16 w-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-6">
-            <Sparkles className="h-8 w-8" />
-          </div>
-          <h2 className="text-xl font-bold text-foreground">Generate a new Custom Report</h2>
-          <p className="text-muted-foreground">
-            Need a specific deep-dive into a niche market or technical feasibility? Our custom AI agent can generate a
-            tailored report in minutes.
-          </p>
-          <Button variant="secondary" className="rounded-xl mt-4 font-semibold shadow-sm">
-            Request Custom Analysis
-          </Button>
-        </div>
-      </Card>
     </div>
   )
 }
