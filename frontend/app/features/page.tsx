@@ -136,8 +136,8 @@ export default function FeaturesPage() {
                   <div className="flex items-center gap-4">
                     <div className="h-12 w-12 rounded-full bg-white/20" />
                     <div>
-                      <p className="font-bold">Sarah Chen</p>
-                      <p className="text-sm text-primary-foreground/60">CEO, Lumina AI</p>
+                      <p className="font-bold">Zaki Haider </p>
+                      <p className="text-sm text-primary-foreground/60">CEO, MarkinovateAI</p>
                     </div>
                   </div>
                 </div>
