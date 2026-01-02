@@ -61,7 +61,7 @@ export default function IdeaValidationPage() {
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">{idea.title} Analysis</h1>
           <p className="text-muted-foreground mt-1">
-            {idea.description}
+            {idea.pitch}
           </p>
         </div>
         <div className="bg-card p-4 rounded-2xl border border-border flex items-center gap-4 shrink-0">
