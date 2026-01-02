@@ -57,12 +57,6 @@ export function DashboardHeader() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="gap-2 cursor-pointer">
-              <User className="h-4 w-4" /> Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer">
-              <CreditCard className="h-4 w-4" /> Billing
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer">
               <Settings className="h-4 w-4" /> Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />

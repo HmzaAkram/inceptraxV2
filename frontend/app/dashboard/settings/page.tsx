@@ -55,53 +55,6 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
-
-        <Card className="border-none shadow-sm overflow-hidden">
-          <CardHeader>
-            <CardTitle>Current Plan</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between p-6 rounded-2xl bg-primary/5 border border-primary/10">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold">Pro Monthly</span>
-                  <Badge className="bg-primary text-primary-foreground border-none">Active</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">Your next billing date is June 12, 2026.</p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold">$29/mo</p>
-                <Button variant="link" className="text-primary p-0 h-auto">
-                  Switch to Annual (Save 20%)
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-4">
-              <h3 className="font-semibold">Payment Method</h3>
-              <div className="flex items-center justify-between p-4 border border-border rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-12 rounded bg-muted flex items-center justify-center font-bold text-[10px] uppercase">
-                    Visa
-                  </div>
-                  <span className="text-sm font-medium">•••• •••• •••• 4242</span>
-                </div>
-                <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                  Update
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-6 border-t border-border">
-              <Button variant="ghost" className="text-destructive hover:text-destructive/80 hover:bg-destructive/10">
-                Cancel Subscription
-              </Button>
-              <Button className="rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80">
-                Upgrade to Team
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )
