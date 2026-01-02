@@ -1,0 +1,111 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CreditCard, Loader2 } from "lucide-react"
+import { apiFetch } from "@/lib/api"
+
+export default function MonetizationPage() {
+    const params = useParams()
+    const [idea, setIdea] = useState<any>(null)
+    const [isLoading, setIsLoading] = useState(true)
+
+    useEffect(() => {
+        async function fetchIdea() {
+            try {
+                const response = await apiFetch(`/ideas/${params.id}`)
+                setIdea(response.data.idea)
+            } catch (error) {
+                console.error("Failed to fetch idea:", error)
+            } finally {
+                setIsLoading(false)
+            }
+        }
+        fetchIdea()
+    }, [params.id])
+
+    if (isLoading) {
+        return (
+            <div className="flex h-[60vh] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        )
+    }
+
+    if (!idea || !idea.analysis_data || !idea.analysis_data.monetization) {
+        return (
+            <div className="text-center py-20 text-foreground">
+                <h2 className="text-2xl font-bold">Monetization Analysis not found</h2>
+            </div>
+        )
+    }
+
+    const monetization = idea.analysis_data.monetization
+
+    return (
+        <div className="space-y-8 max-w-5xl mx-auto">
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                    Monetization Strategy
+                </h1>
+                <p className="text-muted-foreground mt-1">
+                    Revenue models and pricing strategy for {idea.title}.
+                </p>
+            </div>
+
+            <Card className="border-none shadow-sm overflow-hidden">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-foreground">
+                        <CreditCard className="h-5 w-5 text-primary" /> Revenue Model
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="grid gap-6 md:grid-cols-2">
+                        <div className="space-y-2">
+                            <h3 className="font-semibold text-sm text-foreground">Pricing Model</h3>
+                            <p className="text-sm text-muted-foreground">{monetization.pricing_model}</p>
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="font-semibold text-sm text-foreground">Conversion Logic</h3>
+                            <p className="text-sm text-muted-foreground">{monetization.conversion_logic}</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h3 className="font-semibold text-sm text-foreground">Recommended Plans</h3>
+                        <div className="grid gap-4 md:grid-cols-3">
+                            {monetization.plans.map((plan: any, i: number) => (
+                                <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h4 className="font-bold text-sm">{plan.name}</h4>
+                                        <Badge variant="outline" className="text-[10px]">{plan.price}</Badge>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground mb-3 leading-tight">{plan.target}</p>
+                                    <ul className="space-y-1">
+                                        {plan.features.map((f: string, j: number) => (
+                                            <li key={j} className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                                <div className="h-1 w-1 rounded-full bg-primary shrink-0" />
+                                                {f}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+                        <h3 className="font-semibold text-xs text-primary uppercase tracking-wider mb-1">Recommended Strategy</h3>
+                        <p className="text-sm text-foreground leading-relaxed italic">
+                            "{monetization.recommended_strategy}"
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Revenue Assumptions Placeholder if needed, or more content */}
+        </div>
+    )
+}

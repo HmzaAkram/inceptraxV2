@@ -159,46 +159,6 @@ export default function IdeaValidationPage() {
           </p>
         </CardContent>
       </Card>
-
-      {/* MVP Blueprint */}
-      {analysis.mvp_blueprint && (
-        <Card className="border-none shadow-sm overflow-hidden">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
-              <Zap className="h-5 w-5 text-primary" /> MVP Blueprint
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4">
-              {analysis.mvp_blueprint.map((feature: any, i: number) => (
-                <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1 max-w-xl">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-foreground">{feature.feature_name}</h3>
-                      <Badge variant="secondary" className="text-[10px] py-0 px-2 bg-primary/10 text-primary border-none">
-                        {feature.ai_capability}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{feature.problem_solved}</p>
-                  </div>
-                  <div className="flex items-center gap-4 shrink-0">
-                    <div className="text-right">
-                      <p className="text-[10px] font-bold uppercase text-muted-foreground">Priority</p>
-                      <Badge variant={feature.priority === "Must-have" ? "default" : "outline"} className="text-[10px]">
-                        {feature.priority}
-                      </Badge>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-bold uppercase text-muted-foreground">Value</p>
-                      <p className="text-sm font-bold text-foreground">{feature.business_value}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }

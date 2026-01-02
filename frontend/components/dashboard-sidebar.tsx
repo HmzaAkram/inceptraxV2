@@ -12,6 +12,9 @@ import {
   Sparkles,
   PlusCircle,
   HelpCircle,
+  CreditCard,
+  Zap,
+  Rocket,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -27,13 +30,16 @@ export function DashboardSidebar() {
   const pathname = usePathname()
 
   // Extract idea ID from pathname if present (e.g., /dashboard/idea/123/validation)
-  const ideaMatch = pathname.match(/\/dashboard\/idea\/(\d+)/)
+  const ideaMatch = pathname.match(/\/dashboard\/idea\/([^\/]+)/)
   const currentIdeaId = ideaMatch ? ideaMatch[1] : null
 
   const analysisLinks = currentIdeaId ? [
     { name: "Validation", href: `/dashboard/idea/${currentIdeaId}/validation`, icon: Sparkles },
     { name: "Market Research", href: `/dashboard/idea/${currentIdeaId}/market`, icon: Search },
     { name: "Competitors", href: `/dashboard/idea/${currentIdeaId}/competitors`, icon: Target },
+    { name: "Monetization", href: `/dashboard/idea/${currentIdeaId}/monetization`, icon: CreditCard },
+    { name: "MVP Blueprint", href: `/dashboard/idea/${currentIdeaId}/mvp-blueprint`, icon: Zap },
+    { name: "Go-To-Market", href: `/dashboard/idea/${currentIdeaId}/gtm`, icon: Rocket },
   ] : []
 
   return (
