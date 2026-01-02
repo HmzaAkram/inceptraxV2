@@ -149,33 +149,38 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm bg-primary text-primary-foreground">
-          <CardHeader>
-            <CardTitle className="text-xl">Upgrade to Pro</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <p className="text-primary-foreground/80 leading-relaxed">
-              Unlock unlimited idea validation, deep-dive market research, and priority AI processing.
-            </p>
-            <Button variant="secondary" className="w-full h-11 rounded-xl font-semibold shadow-md">
-              Start Free Trial
-            </Button>
-            <ul className="space-y-3 text-sm pt-4">
-              <li className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                Unlimited deep-dives
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                Advanced GTM strategies
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                Export as PDF/JSON
-              </li>
-            </ul>
-          </CardContent>
-        </Card>
+        <Card className="border-none shadow-sm bg-primary text-primary-foreground rounded-xl">
+  <CardHeader>
+    <CardTitle className="text-xl font-semibold">Quick Tips & Resources</CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-4">
+    <p className="text-primary-foreground/90 leading-relaxed">
+      Boost your startup with these quick actionable tips and helpful resources.
+    </p>
+    <ul className="space-y-3 text-sm">
+      <li className="flex items-center gap-2">
+        <div className="h-1.5 w-1.5 rounded-full bg-white" />
+        Validate your idea early and often with real user feedback.
+      </li>
+      <li className="flex items-center gap-2">
+        <div className="h-1.5 w-1.5 rounded-full bg-white" />
+        Use data-driven GTM strategies to target the right audience.
+      </li>
+      <li className="flex items-center gap-2">
+        <div className="h-1.5 w-1.5 rounded-full bg-white" />
+        Monitor your KPIs regularly to track your growth trajectory.
+      </li>
+    </ul>
+    <Button
+      variant="secondary"
+      className="w-full h-11 rounded-xl font-semibold shadow-md"
+      onClick={() => window.open('https://example.com/resources', '_blank')}
+    >
+      Explore More
+    </Button>
+  </CardContent>
+</Card>
+
       </div>
     </div>
   )
