@@ -45,10 +45,6 @@ export default function SettingsPage() {
                 <Label htmlFor="email">Email Address</Label>
                 <Input id="email" defaultValue="jane@example.com" className="rounded-xl" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="job-title">Job Title</Label>
-                <Input id="job-title" defaultValue="Product Designer" className="rounded-xl" />
-              </div>
             </div>
             <div className="flex justify-end">
               <Button className="rounded-xl px-8">Save Changes</Button>
