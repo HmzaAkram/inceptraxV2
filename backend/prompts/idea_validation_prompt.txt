@@ -16,6 +16,9 @@ Provide a detailed analysis including:
 7. A concise AI Recommendation (Executive Summary)
 8. Market Research (TAM, SAM, SOM)
 9. Competitor Analysis (at least 3 competitors with strengths and weaknesses)
+10. Monetization Strategy (Tiered pricing, model, conversion logic)
+11. MVP Blueprint (3-5 core AI features, capabilities used, priority)
+12. Go-To-Market Strategy (Acquisition channels, messaging, 1,000 users strategy)
 
 Return the response in the following JSON format:
 {{
@@ -44,5 +47,27 @@ Return the response in the following JSON format:
     "competitors": [
         {{ "name": "...", "type": "Direct/Indirect", "threat": "High/Medium/Low", "strengths": ["...", "..."], "weaknesses": ["...", "..."] }},
         ...
-    ]
+    ],
+    "monetization": {{
+        "pricing_model": "Freemium / Subscription / Usage-based",
+        "recommended_strategy": "...",
+        "plans": [
+            {{ "name": "Free / Pro / Team", "price": "$0 / $49/mo / Custom", "target": "...", "features": ["...", "..."] }},
+            ...
+        ],
+        "conversion_logic": "..."
+    }},
+    "mvp_blueprint": [
+        {{ "feature_name": "...", "ai_capability": "LLM / Embeddings / Reasoning", "problem_solved": "...", "priority": "Must-have / Later", "business_value": "High/Medium" }},
+        ...
+    ],
+    "gtm_strategy": {{
+        "acquisition_channels": [
+            {{ "channel": "...", "strategy": "..." }},
+            ...
+        ],
+        "messaging": {{ "hook": "...", "value_prop": "..." }},
+        "funnel_stages": {{ "awareness": "...", "activation": "...", "conversion": "..." }},
+        "early_traction": "First 1,000 users strategy..."
+    }}
 }}

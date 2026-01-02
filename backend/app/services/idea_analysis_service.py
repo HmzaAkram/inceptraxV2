@@ -65,7 +65,20 @@ class IdeaAnalysisService:
                 },
                 "competitors": [
                     {"name": "Internal Error", "type": "Critical", "threat": "High", "strengths": ["None"], "weaknesses": ["Model not found"]}
-                ]
+                ],
+                "monetization": {
+                    "pricing_model": "N/A",
+                    "recommended_strategy": "Error recovery - check system logs",
+                    "plans": [],
+                    "conversion_logic": "N/A"
+                },
+                "mvp_blueprint": [],
+                "gtm_strategy": {
+                    "acquisition_channels": [],
+                    "messaging": {"hook": "N/A", "value_prop": "N/A"},
+                    "funnel_stages": {"awareness": "N/A", "activation": "N/A", "conversion": "N/A"},
+                    "early_traction": "N/A"
+                }
             }
             
             idea.status = 'failed'
