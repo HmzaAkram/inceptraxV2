@@ -1,9 +1,6 @@
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
-import { Badge } from "@/components/ui/badge"
-import { Users, Globe, Target, CloudLightning } from "lucide-react";
-
-
+import { Users, Globe, Target, Lightbulb, Heart, Zap } from "lucide-react";
 
 const teamMembers = [
   {
@@ -38,88 +35,92 @@ export default function AboutPage() {
       <Navbar />
 
       <main className="flex-grow py-20">
-        <div className="container px-4 max-w-5xl mx-auto space-y-16">
+        <div className="container px-4 max-w-5xl mx-auto space-y-20">
 
-          {/* Mission Section */}
-          <section className="text-center space-y-8">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-primary">Our Mission</h1>
-            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              At Inceptrax, we believe that the world's most pressing problems can be solved through entrepreneurship. Our mission is to democratize startup success by providing founders with AI-powered insights that were previously only available to deep-pocketed consultants.
+          {/* Mission & Vision Section */}
+          <section className="text-center space-y-10">
+            <h1 className="text-4xl md:text-6xl font-bold text-primary tracking-tight">One Mission: <br />Democratize Startup Success</h1>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              We believe that no great execution should be wasted on a flawed premise, and no great idea should die due to a lack of strategic clarity.
             </p>
 
-            <div className="grid gap-8 py-12 md:grid-cols-2">
-              <div className="flex flex-col gap-4 p-6 border border-border rounded-2xl shadow-sm hover:shadow-lg transition-all">
-                <div className="flex items-center gap-3 text-primary">
-                  <Users className="h-6 w-6" />
-                  <h2 className="text-2xl font-bold">Why we exist</h2>
+            <div className="grid gap-8 py-8 md:grid-cols-2 text-left">
+              <div className="group p-8 border border-border rounded-3xl bg-card hover:border-primary transition-colors">
+                <div className="flex items-center gap-4 text-primary mb-4">
+                  <div className="p-3 bg-primary/10 rounded-xl">
+                    <Zap className="h-6 w-6" />
+                  </div>
+                  <h2 className="text-2xl font-bold">Our Purpose</h2>
                 </div>
-                <p className="text-muted-foreground">
-                  Founders spend months building products that nobody wants. We help you find product-market fit faster using data-driven AI before you write a single line of code.
+                <p className="text-muted-foreground leading-relaxed">
+                  To eliminate the &quot;False Start.&quot; Founders often spend months building products that nobody wants. We provide the friction needed to ground dreams in reality, or the validation needed to soar.
                 </p>
               </div>
-              <div className="flex flex-col gap-4 p-6 border border-border rounded-2xl shadow-sm hover:shadow-lg transition-all">
-                <div className="flex items-center gap-3 text-primary">
-                  <Globe className="h-6 w-6" />
+              <div className="group p-8 border border-border rounded-3xl bg-card hover:border-primary transition-colors">
+                <div className="flex items-center gap-4 text-primary mb-4">
+                  <div className="p-3 bg-primary/10 rounded-xl">
+                    <Globe className="h-6 w-6" />
+                  </div>
                   <h2 className="text-2xl font-bold">Our Vision</h2>
                 </div>
-                <p className="text-muted-foreground">
-                  To be the operating system for the ideation phase of every startup, empowering founders to build meaningful and sustainable companies.
+                <p className="text-muted-foreground leading-relaxed">
+                  A world where high-quality market intelligence isn&apos;t reserved for Fortune 500s or VC-backed darlings, but available to every student, builder, and dreamer in their dorm room.
                 </p>
               </div>
             </div>
+          </section>
 
-            <p className="text-muted-foreground max-w-3xl mx-auto">
-              Founded in 2025, Inceptrax combines cutting-edge AI with real-world market data and proven business frameworks to give you a competitive edge from day one.
+          {/* Why We Built It */}
+          <section className="bg-muted/30 rounded-3xl p-10 md:p-16 text-center">
+            <h2 className="text-3xl font-bold mb-6">Why We Built Inceptrax</h2>
+            <p className="max-w-3xl mx-auto text-lg text-muted-foreground mb-8">
+              We&apos;ve been there. We&apos;ve burnt savings on marketing campaigns for audiences that didn&apos;t exist. We&apos;ve built features nobody used.
+            </p>
+            <p className="max-w-3xl mx-auto text-lg text-muted-foreground">
+              The &quot;Lean Startup&quot; methodology is great, but it&apos;s slow. Validation used to mean weeks of customer interviews and landing page tests. We built Inceptrax to condense that process into minutes using Generative AI.
             </p>
           </section>
 
-          {/* How We Help Section */}
-          <section className="space-y-8">
-            <h2 className="text-3xl font-bold text-center text-primary mb-12">How We Help Founders</h2>
-            <div className="grid gap-6 md:grid-cols-3">
-              <div className="flex flex-col items-center p-6 text-center bg-card border border-border rounded-2xl shadow-sm hover:shadow-lg transition-all">
-                <Target className="h-10 w-10 text-primary mb-4" />
-                <h3 className="font-bold text-lg mb-2">Market Validation</h3>
-                <p className="text-muted-foreground text-sm">
-                  Quickly validate your startup ideas using AI-driven market insights and predictive analytics.
-                </p>
-              </div>
-              <div className="flex flex-col items-center p-6 text-center bg-card border border-border rounded-2xl shadow-sm hover:shadow-lg transition-all">
-                <CloudLightning className="h-10 w-10 text-primary mb-4" />
-                <h3 className="font-bold text-lg mb-2">AI Analysis</h3>
-                <p className="text-muted-foreground text-sm">
-                  Receive actionable insights into strengths, risks, and growth potential before building your product.
-                </p>
-              </div>
-              <div className="flex flex-col items-center p-6 text-center bg-card border border-border rounded-2xl shadow-sm hover:shadow-lg transition-all">
-                <Globe className="h-10 w-10 text-primary mb-4" />
-                <h3 className="font-bold text-lg mb-2">Global Reach</h3>
-                <p className="text-muted-foreground text-sm">
-                  Explore opportunities across markets worldwide, backed by real data and AI predictions.
-                </p>
-              </div>
+          {/* Who It's For */}
+          <section className="space-y-12">
+            <h2 className="text-3xl font-bold text-center text-primary">Who We Serve</h2>
+            <div className="grid gap-6 md:grid-cols-4">
+              {[
+                { icon: Target, title: "Indie Hackers", desc: "Move fast and break nothing. Validate before coding." },
+                { icon: Lightbulb, title: "Founders", desc: "Seek clarity before your first line of code." },
+                { icon: Users, title: "Product Mgrs", desc: "Validate internal features before engineering handoff." },
+                { icon: Heart, title: "Students", desc: "Learn business modelling with real-world feedback." }
+              ].map((item, i) => (
+                <div key={i} className="flex flex-col items-center p-6 text-center bg-card border border-border rounded-2xl shadow-sm hover:shadow-lg transition-all h-full">
+                  <item.icon className="h-10 w-10 text-primary mb-4" />
+                  <h3 className="font-bold text-lg mb-2">{item.title}</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    {item.desc}
+                  </p>
+                </div>
+              ))}
             </div>
           </section>
 
           {/* Team Section */}
-          <section className="space-y-12">
-            <h2 className="text-3xl font-bold mb-12 text-center text-primary">Meet Our Team</h2>
+          <section className="space-y-12 pt-10">
+            <h2 className="text-3xl font-bold mb-12 text-center text-primary">Meet The Team</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               {teamMembers.map((member) => (
                 <div
                   key={member.name}
-                  className="flex flex-col items-center text-center bg-card p-6 rounded-2xl shadow-sm hover:shadow-lg transition-all"
+                  className="group flex flex-col items-center text-center bg-card p-6 rounded-2xl border border-border shadow-sm hover:border-primary/50 transition-all"
                 >
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-all mb-4">
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-primary/20 group-hover:border-primary transition-all mb-4 bg-muted">
                     <img
                       src={member.img}
                       alt={member.name}
-                      className="object-cover w-full h-full"
+                      className="object-cover w-full h-full opacity-75 group-hover:opacity-100 transition-opacity"
                     />
                   </div>
                   <h3 className="font-bold text-lg">{member.name}</h3>
-                  <p className="text-primary font-medium">{member.role}</p>
-                  <p className="text-sm text-muted-foreground mt-2">{member.bio}</p>
+                  <p className="text-primary font-medium text-sm mb-2">{member.role}</p>
+                  <p className="text-xs text-muted-foreground">{member.bio}</p>
                 </div>
               ))}
             </div>
