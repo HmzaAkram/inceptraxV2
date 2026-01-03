@@ -44,6 +44,7 @@ export default function IdeaValidationPage() {
       </div>
     )
   }
+  
 
   const analysis = idea.analysis_data
 

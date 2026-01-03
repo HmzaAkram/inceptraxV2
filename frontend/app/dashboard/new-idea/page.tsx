@@ -27,10 +27,27 @@ export default function NewIdeaPage() {
   }
 
   const handleSubmit = async () => {
-    if (!formData.title || !formData.description) {
-      toast.error("Please fill in both fields")
-      return
-    }
+  if (!formData.title || !formData.description) {
+    toast.error("Please fill in both fields")
+    return
+  }
+
+  setIsSubmitting(true)
+
+  try {
+    const response = await apiFetch("/ideas/", {
+      method: "POST",
+      body: JSON.stringify(formData),
+    })
+
+    toast.success("Idea submitted. AI analysis in progress...")
+    router.push(`/dashboard/idea/${response.data.idea.id}`)
+  } catch (error: any) {
+    toast.error(error.message || "Failed to submit idea")
+    setIsSubmitting(false)
+  }
+
+
 
     setIsSubmitting(true)
     try {
