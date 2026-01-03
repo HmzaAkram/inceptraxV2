@@ -41,7 +41,6 @@ class IdeaAnalysisService:
             
             # Update idea with results
             idea.analysis_data = analysis_data
-            idea.validation_score = analysis_data.get('overall_score', 0)
             idea.status = 'completed'
             db.session.commit()
             
@@ -83,7 +82,6 @@ class IdeaAnalysisService:
             
             idea.status = 'failed'
             idea.analysis_data = fallback_data
-            idea.validation_score = 0
             db.session.commit()
             
             return fallback_data
