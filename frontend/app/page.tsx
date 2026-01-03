@@ -21,7 +21,7 @@ export default function LandingPage() {
 
       <main className="flex-grow">
         {/* Hero Section */}
-        <section className="relative py-20 lg:py-32 overflow-hidden">
+        <section className="relative pt-0 pb-20 lg:pb-32 overflow-hidden">
           <div className="container px-4 text-center relative z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 animate-fade-in">
               <Logo className="h-4 w-4 rounded-sm" />
