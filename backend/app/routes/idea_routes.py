@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, send_file
 from app.services.idea_analysis_service import IdeaAnalysisService
 from app.services.pdf_service import PDFService
+from app.services.market_service import MarketService
 from app.models.user_model import Idea
 from app.middleware.auth_middleware import token_required
 from app.utils.response_formatter import ResponseFormatter
@@ -83,4 +84,20 @@ def reanalyze_idea(current_user, idea_id):
     return ResponseFormatter.success(
         data={'idea': idea.to_dict()},
         message="Idea re-analyzed successfully"
+    )
+
+@idea_bp.route('/<int:idea_id>/market/research', methods=['POST'])
+@token_required
+def fetch_market_research(current_user, idea_id):
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+        
+    results = MarketService.fetch_market_data(idea.id)
+    if isinstance(results, dict) and "error" in results:
+        return ResponseFormatter.error(results["error"], status=500)
+        
+    return ResponseFormatter.success(
+        data={'market_data': results},
+        message="Market data fetched successfully"
     )
