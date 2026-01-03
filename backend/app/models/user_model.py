@@ -67,5 +67,13 @@ class Idea(db.Model):
             "market": self.market,
             "status": self.status,
             "analysis_status": self.analysis_status,
-            "analysis_data": self.analysis_data
+            "analysis_status": self.analysis_status,
+            "analysis_data": self.analysis_data,
+            "validation_score": self.validation_score
         }
+
+    @property
+    def validation_score(self):
+        if self.analysis_data and 'overall_score' in self.analysis_data:
+            return self.analysis_data.get('overall_score', 0)
+        return 0

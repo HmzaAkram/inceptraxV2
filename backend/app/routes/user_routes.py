@@ -14,9 +14,10 @@ user_bp = Blueprint('user', __name__)
 def get_stats(current_user):
     total_ideas = Idea.query.filter_by(user_id=current_user.id).count()
 
-    avg_score = db.session.query(func.avg(Idea.validation_score)) \
-        .filter(Idea.user_id == current_user.id).scalar()
-    avg_score = round(avg_score, 1) if avg_score else 0
+    # Calculate average score in Python since it's a computed property
+    user_ideas = Idea.query.filter_by(user_id=current_user.id).all()
+    scores = [idea.validation_score for idea in user_ideas if idea.validation_score > 0]
+    avg_score = round(sum(scores) / len(scores), 1) if scores else 0
 
     reports_count = Idea.query.filter(
         Idea.user_id == current_user.id,
