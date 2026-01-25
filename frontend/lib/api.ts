@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://hmzaakram.pythonanywhere.com/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://hmzaakram.pythonanywhere.com';
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
