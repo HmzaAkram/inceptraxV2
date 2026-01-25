@@ -19,26 +19,30 @@ export default function RegisterPage() {
   const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    try {
-      const data = await apiFetch("/auth/register", {
-        method: "POST",
-        body: JSON.stringify({
-          first_name: firstName,
-          last_name: lastName,
-          email,
-          password
-        }),
-      })
-      login(data.token, data.user)
-      toast.success("Account created successfully!")
-    } catch (error: any) {
-      toast.error(error.message || "Failed to register")
-    } finally {
-      setIsLoading(false)
-    }
+  e.preventDefault()
+  setIsLoading(true)
+
+  try {
+    const data = await apiFetch("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        password
+      }),
+    })
+
+    // auto-login after successful registration
+    login(data.token, data.user)
+    toast.success("Account created successfully!")
+  } catch (error: any) {
+    toast.error(error.message || "Failed to register")
+  } finally {
+    setIsLoading(false)
   }
+}
+
 
   return (
     <div className="flex min-h-screen">
