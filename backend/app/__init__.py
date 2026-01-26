@@ -10,7 +10,11 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     # Initialize extensions
-    CORS(app, resources={r"/api/*": {"origins": ["http://localhost:3000", "https://hmzaakram.pythonanywhere.com"]}}, supports_credentials=True)
+    CORS(app, resources={r"/api/*": {"origins": [
+        "http://localhost:3000", 
+        "https://hmzaakram.pythonanywhere.com",
+        "https://inceptrax-v2.vercel.app"
+    ]}}, supports_credentials=True)
     db.init_app(app)
 
     # Register blueprints
