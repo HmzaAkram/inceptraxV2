@@ -12,6 +12,10 @@ export const metadata: Metadata = {
   title: "Inceptrax - Transform Ideas into Business Plans",
   description:
     "AI-powered platform that helps founders validate startup ideas, analyze markets, identify competitors, and create actionable business plans with Inceptrax.",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/apple-icon.png",
+  },
 }
 
 import { AuthProvider } from "@/components/auth-provider"
@@ -23,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased`} suppressHydrationWarning={true}>
         <AuthProvider>
           {children}
