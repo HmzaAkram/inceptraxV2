@@ -43,7 +43,7 @@ export default function CompetitorAnalysisPage() {
     )
   }
 
-  const competitors = idea.analysis_data.competitors
+  const competitors = idea.analysis_data?.competitors || []
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
@@ -55,7 +55,7 @@ export default function CompetitorAnalysisPage() {
       </div>
 
       <div className="space-y-6">
-        {competitors.map((comp: any) => (
+        {(competitors || []).map((comp: any) => (
           <Card
             key={comp.name}
             className="border border-border shadow-sm bg-card"
@@ -65,16 +65,16 @@ export default function CompetitorAnalysisPage() {
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-xl font-bold">{comp.name}</h3>
+                    <h3 className="text-xl font-bold">{comp.name || "Unknown Competitor"}</h3>
                     <Badge variant={comp.type === "Direct" ? "default" : "secondary"}>
-                      {comp.type}
+                      {comp.type || "N/A"}
                     </Badge>
                   </div>
                   <div className="text-sm">
                     <span className="text-muted-foreground">Threat Level: </span>
                     <span
                       className={
-                        comp.threat === "High"
+                        (comp.threat === "High" || comp.threat === "Medium")
                           ? "text-destructive font-bold"
                           : "text-amber-500 font-bold"
                       }
@@ -94,7 +94,7 @@ export default function CompetitorAnalysisPage() {
                   </h4>
 
                   <ul className="space-y-3">
-                    {comp.strengths.map((s: string, i: number) => (
+                    {(comp.strengths || []).map((s: string, i: number) => (
                       <li
                         key={i}
                         className="flex gap-3 items-start text-sm text-muted-foreground"
@@ -105,6 +105,9 @@ export default function CompetitorAnalysisPage() {
                         </div>
                       </li>
                     ))}
+                    {(!comp.strengths || comp.strengths.length === 0) && (
+                      <li className="text-sm text-muted-foreground italic">No strengths listed.</li>
+                    )}
                   </ul>
                 </div>
 
@@ -115,7 +118,7 @@ export default function CompetitorAnalysisPage() {
                   </h4>
 
                   <ul className="space-y-3">
-                    {comp.weaknesses.map((w: string, i: number) => (
+                    {(comp.weaknesses || []).map((w: string, i: number) => (
                       <li
                         key={i}
                         className="flex gap-3 items-start text-sm text-muted-foreground"
@@ -126,12 +129,20 @@ export default function CompetitorAnalysisPage() {
                         </div>
                       </li>
                     ))}
+                    {(!comp.weaknesses || comp.weaknesses.length === 0) && (
+                      <li className="text-sm text-muted-foreground italic">No weaknesses listed.</li>
+                    )}
                   </ul>
                 </div>
               </div>
             </CardContent>
           </Card>
         ))}
+        {(!competitors || competitors.length === 0) && (
+          <div className="text-center py-10 bg-card rounded-xl border border-dashed border-border text-muted-foreground">
+            No competitor data available.
+          </div>
+        )}
       </div>
 
       {/* EDGE */}
@@ -143,7 +154,7 @@ export default function CompetitorAnalysisPage() {
         </CardHeader>
         <CardContent>
           <p className="leading-relaxed font-medium">
-            Based on the analysis of {competitors.length} competitors, your
+            Based on the analysis of {(competitors || []).length} competitors, your
             unique advantage lies in the specific solution proposed for{" "}
             {idea.title}.
           </p>

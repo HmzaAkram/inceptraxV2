@@ -42,7 +42,7 @@ export default function GTMStrategyPage() {
         )
     }
 
-    const gtm = idea.analysis_data.gtm_strategy
+    const gtm = idea.analysis_data?.gtm_strategy || {}
 
     return (
         <div className="space-y-8 max-w-5xl mx-auto">
@@ -63,12 +63,15 @@ export default function GTMStrategyPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {gtm.acquisition_channels.map((ac: any, i: number) => (
+                        {(gtm.acquisition_channels || []).map((ac: any, i: number) => (
                             <div key={i} className="space-y-1 p-3 rounded-lg bg-muted/20">
-                                <h4 className="font-semibold text-sm text-foreground">{ac.channel}</h4>
+                                <h4 className="font-semibold text-sm text-foreground">{ac.channel || "Channel"}</h4>
                                 <p className="text-xs text-muted-foreground leading-relaxed">{ac.strategy}</p>
                             </div>
                         ))}
+                        {(!gtm.acquisition_channels || gtm.acquisition_channels.length === 0) && (
+                            <p className="text-sm text-muted-foreground italic">No acquisition channels data available.</p>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -86,7 +89,7 @@ export default function GTMStrategyPage() {
                                 </div>
                                 <div>
                                     <h4 className="text-xs font-bold uppercase text-muted-foreground">Awareness</h4>
-                                    <p className="text-sm text-foreground">{gtm.funnel_stages.awareness}</p>
+                                    <p className="text-sm text-foreground">{gtm.funnel_stages?.awareness || "N/A"}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4">
@@ -97,7 +100,7 @@ export default function GTMStrategyPage() {
                                 </div>
                                 <div>
                                     <h4 className="text-xs font-bold uppercase text-muted-foreground">Activation</h4>
-                                    <p className="text-sm text-foreground">{gtm.funnel_stages.activation}</p>
+                                    <p className="text-sm text-foreground">{gtm.funnel_stages?.activation || "N/A"}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4">
@@ -108,7 +111,7 @@ export default function GTMStrategyPage() {
                                 </div>
                                 <div>
                                     <h4 className="text-xs font-bold uppercase text-muted-foreground">Conversion</h4>
-                                    <p className="text-sm text-foreground">{gtm.funnel_stages.conversion}</p>
+                                    <p className="text-sm text-foreground">{gtm.funnel_stages?.conversion || "N/A"}</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -122,7 +125,7 @@ export default function GTMStrategyPage() {
                         </CardHeader>
                         <CardContent>
                             <p className="text-sm text-foreground leading-relaxed">
-                                {gtm.early_traction}
+                                {gtm.early_traction || "Plan to be announced."}
                             </p>
                         </CardContent>
                     </Card>

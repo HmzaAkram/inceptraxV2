@@ -57,7 +57,7 @@ export default function IdeaValidationPage() {
               Validation Report
             </Badge>
             <span className="text-sm text-muted-foreground">
-              Generated {new Date(idea.updated_at).toLocaleDateString()}
+              Generated {new Date(idea.created_at).toLocaleDateString()}
             </span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">{idea.title} Analysis</h1>

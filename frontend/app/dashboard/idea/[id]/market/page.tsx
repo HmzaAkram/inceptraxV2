@@ -52,13 +52,13 @@ export default function MarketResearchPage() {
     )
   }
 
-  const market = idea.analysis_data.market_research
+  const market = idea.analysis_data?.market_research || {}
 
   const handleFetchMarketData = async () => {
     setIsSearching(true)
     try {
       const response = await apiFetch(`/ideas/${idea.id}/market/research`, { method: "POST" })
-      setSearchResults(response.data.market_data)
+      setSearchResults(response.data.market_data || [])
     } catch (error) {
       console.error("Failed to fetch market data:", error)
     } finally {
@@ -83,12 +83,12 @@ export default function MarketResearchPage() {
           className="rounded-xl gap-2 font-semibold"
         >
           {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
-          {searchResults.length > 0 ? "Refresh Market Data" : "Fetch Live Market Data"}
+          {(searchResults || []).length > 0 ? "Refresh Market Data" : "Fetch Live Market Data"}
         </Button>
       </div>
 
       {/* Live Market Insights */}
-      {searchResults.length > 0 && (
+      {(searchResults || []).length > 0 && (
         <Card className="border-none shadow-sm bg-card/60 overflow-hidden">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
@@ -97,7 +97,7 @@ export default function MarketResearchPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {searchResults.map((result, i) => (
+              {(searchResults || []).map((result, i) => (
                 <a
                   key={i}
                   href={result.link}
@@ -133,7 +133,7 @@ export default function MarketResearchPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-foreground">
-                {market[key]}
+                {market[key] || "N/A"}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {key === "tam"
@@ -157,7 +157,7 @@ export default function MarketResearchPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {market.trends.map((trend: any, i: number) => (
+            {(market.trends || []).map((trend: any, i: number) => (
               <div key={i} className="space-y-2">
                 <h3 className="font-semibold text-sm text-foreground break-words">
                   {trend.title}
@@ -167,6 +167,9 @@ export default function MarketResearchPage() {
                 </p>
               </div>
             ))}
+            {(!market.trends || market.trends.length === 0) && (
+              <p className="text-sm text-muted-foreground">No trends data available.</p>
+            )}
           </CardContent>
         </Card>
 
@@ -178,7 +181,7 @@ export default function MarketResearchPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {market.segments.map((segment: any, i: number) => (
+            {(market.segments || []).map((segment: any, i: number) => (
               <div
                 key={i}
                 className="p-4 rounded-xl bg-muted/30 border border-border overflow-hidden"
@@ -208,6 +211,9 @@ export default function MarketResearchPage() {
                 </div>
               </div>
             ))}
+            {(!market.segments || market.segments.length === 0) && (
+              <p className="text-sm text-muted-foreground">No segments data available.</p>
+            )}
           </CardContent>
         </Card>
       </div>

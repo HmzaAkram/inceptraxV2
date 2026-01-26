@@ -42,7 +42,7 @@ export default function MVPBlueprintPage() {
         )
     }
 
-    const blueprint = idea.analysis_data.mvp_blueprint
+    const blueprint = idea.analysis_data?.mvp_blueprint || []
 
     return (
         <div className="space-y-8 max-w-5xl mx-auto">
@@ -63,13 +63,13 @@ export default function MVPBlueprintPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="grid gap-4">
-                        {blueprint.map((feature: any, i: number) => (
+                        {(blueprint || []).map((feature: any, i: number) => (
                             <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div className="space-y-1 max-w-xl break-words overflow-wrap-anywhere">
                                     <div className="flex items-center gap-2">
-                                        <h3 className="font-bold text-foreground break-words">{feature.feature_name}</h3>
+                                        <h3 className="font-bold text-foreground break-words">{feature.feature_name || "Feature"}</h3>
                                         <Badge variant="secondary" className="text-[10px] py-0 px-2 bg-primary/10 text-primary border-none whitespace-nowrap">
-                                            {feature.ai_capability}
+                                            {feature.ai_capability || "AI"}
                                         </Badge>
                                     </div>
                                     <p className="text-sm text-muted-foreground break-words overflow-wrap-anywhere">
@@ -80,15 +80,20 @@ export default function MVPBlueprintPage() {
                                     <div className="text-right">
                                         <p className="text-[10px] font-bold uppercase text-muted-foreground">Priority</p>
                                         <Badge variant={feature.priority === "Must-have" ? "default" : "outline"} className="text-[10px] whitespace-nowrap">
-                                            {feature.priority}
+                                            {feature.priority || "N/A"}
                                         </Badge>
                                     </div>
                                     <div className="text-right max-w-[100px] break-words">
-                                        <p className="text-sm font-bold text-foreground">{feature.business_value}</p>
+                                        <p className="text-sm font-bold text-foreground">{feature.business_value || "High"}</p>
                                     </div>
                                 </div>
                             </div>
                         ))}
+                        {(!blueprint || blueprint.length === 0) && (
+                            <div className="text-center py-6 text-muted-foreground italic border border-dashed rounded-xl">
+                                No MVP features mapped out yet.
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>

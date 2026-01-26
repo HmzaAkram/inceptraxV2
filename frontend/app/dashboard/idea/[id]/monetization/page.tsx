@@ -42,7 +42,7 @@ export default function MonetizationPage() {
         )
     }
 
-    const monetization = idea.analysis_data.monetization
+    const monetization = idea.analysis_data?.monetization || {}
 
     return (
         <div className="space-y-8 max-w-5xl mx-auto">
@@ -65,26 +65,26 @@ export default function MonetizationPage() {
                     <div className="grid gap-6 md:grid-cols-2">
                         <div className="space-y-2">
                             <h3 className="font-semibold text-sm text-foreground">Pricing Model</h3>
-                            <p className="text-sm text-muted-foreground">{monetization.pricing_model}</p>
+                            <p className="text-sm text-muted-foreground">{monetization.pricing_model || "N/A"}</p>
                         </div>
                         <div className="space-y-2">
                             <h3 className="font-semibold text-sm text-foreground">Conversion Logic</h3>
-                            <p className="text-sm text-muted-foreground">{monetization.conversion_logic}</p>
+                            <p className="text-sm text-muted-foreground">{monetization.conversion_logic || "N/A"}</p>
                         </div>
                     </div>
 
                     <div className="space-y-4">
                         <h3 className="font-semibold text-sm text-foreground">Recommended Plans</h3>
                         <div className="grid gap-4 md:grid-cols-3">
-                            {monetization.plans.map((plan: any, i: number) => (
+                            {(monetization.plans || []).map((plan: any, i: number) => (
                                 <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border">
                                     <div className="flex justify-between items-start mb-2">
-                                        <h4 className="font-bold text-sm">{plan.name}</h4>
-                                        <Badge variant="outline" className="text-[10px]">{plan.price}</Badge>
+                                        <h4 className="font-bold text-sm">{plan.name || "Plan"}</h4>
+                                        <Badge variant="outline" className="text-[10px]">{plan.price || "N/A"}</Badge>
                                     </div>
                                     <p className="text-[10px] text-muted-foreground mb-3 leading-tight">{plan.target}</p>
                                     <ul className="space-y-1">
-                                        {plan.features.map((f: string, j: number) => (
+                                        {(plan.features || []).map((f: string, j: number) => (
                                             <li key={j} className="text-[10px] text-muted-foreground flex items-center gap-1">
                                                 <div className="h-1 w-1 rounded-full bg-primary shrink-0" />
                                                 {f}
@@ -93,13 +93,16 @@ export default function MonetizationPage() {
                                     </ul>
                                 </div>
                             ))}
+                            {(!monetization.plans || monetization.plans.length === 0) && (
+                                <p className="text-sm text-muted-foreground italic">No plans data available.</p>
+                            )}
                         </div>
                     </div>
 
                     <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
                         <h3 className="font-semibold text-xs text-primary uppercase tracking-wider mb-1">Recommended Strategy</h3>
                         <p className="text-sm text-foreground leading-relaxed italic">
-                            "{monetization.recommended_strategy}"
+                            "{monetization.recommended_strategy || "Strategy not available."}"
                         </p>
                     </div>
                 </CardContent>
