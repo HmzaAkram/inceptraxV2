@@ -51,16 +51,18 @@ class IdeaAnalysisService:
             
             fallback_data = {
                 "overall_score": 50,
-                "market_demand": "Unable to verify (AI Gravity Source Unavailable)",
-                "problem_severity": "Validation pending due to system error",
-                "growth_potential": "Analysis suspended",
+                "scores": {
+                    "market_demand": { "label": "N/A (Error)", "value": 50 },
+                    "problem_severity": { "label": "N/A (Error)", "value": 50 },
+                    "growth_potential": { "label": "N/A (Error)", "value": 50 }
+                },
                 "strengths": ["System recorded the idea correctly"],
                 "risks": ["AI analysis failure: " + str(e)],
                 "recommendation": "The 'Source of Gravity' (Gemini model) was unreachable. Please retry the analysis in a few minutes.",
                 "market_research": {
                     "tam": "N/A", "sam": "N/A", "som": "N/A",
-                    "trends": ["System Error: AI Model Timeout"],
-                    "segments": ["Error Recovery Mode"]
+                    "trends": [{"title": "System Error", "description": "AI Model Timeout"}],
+                    "segments": [{"name": "Error Recovery", "description": "Processing failed", "percentage": "0%", "wtp": "N/A"}]
                 },
                 "competitors": [
                     {"name": "Internal Error", "type": "Critical", "threat": "High", "strengths": ["None"], "weaknesses": ["Model not found"]}

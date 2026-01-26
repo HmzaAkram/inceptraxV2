@@ -44,7 +44,7 @@ export default function IdeaValidationPage() {
       </div>
     )
   }
-  
+
 
   const analysis = idea.analysis_data
 
@@ -84,8 +84,8 @@ export default function IdeaValidationPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{analysis.scores.market_demand.label}</div>
-            <Progress value={analysis.scores.market_demand.value} className="h-2 mt-2" />
+            <div className="text-2xl font-bold text-foreground">{analysis.scores?.market_demand?.label || "N/A"}</div>
+            <Progress value={analysis.scores?.market_demand?.value || 0} className="h-2 mt-2" />
           </CardContent>
         </Card>
         <Card className="border-none shadow-sm bg-card/50">
@@ -95,8 +95,8 @@ export default function IdeaValidationPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{analysis.scores.problem_severity.label}</div>
-            <Progress value={analysis.scores.problem_severity.value} className="h-2 mt-2" />
+            <div className="text-2xl font-bold text-foreground">{analysis.scores?.problem_severity?.label || "N/A"}</div>
+            <Progress value={analysis.scores?.problem_severity?.value || 0} className="h-2 mt-2" />
           </CardContent>
         </Card>
         <Card className="border-none shadow-sm bg-card/50">
@@ -106,8 +106,8 @@ export default function IdeaValidationPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{analysis.scores.growth_potential.label}</div>
-            <Progress value={analysis.scores.growth_potential.value} className="h-2 mt-2" />
+            <div className="text-2xl font-bold text-foreground">{analysis.scores?.growth_potential?.label || "N/A"}</div>
+            <Progress value={analysis.scores?.growth_potential?.value || 0} className="h-2 mt-2" />
           </CardContent>
         </Card>
       </div>
@@ -120,7 +120,7 @@ export default function IdeaValidationPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {analysis.strengths.map((strength: string, i: number) => (
+            {(analysis.strengths || []).map((strength: string, i: number) => (
               <div key={i} className="flex gap-3 text-sm leading-relaxed text-muted-foreground">
                 <div className="h-5 w-5 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center shrink-0 mt-0.5">
                   <CheckCircle2 className="h-3 w-3" />
@@ -128,6 +128,9 @@ export default function IdeaValidationPage() {
                 <span>{strength}</span>
               </div>
             ))}
+            {(!analysis.strengths || analysis.strengths.length === 0) && (
+              <p className="text-sm text-muted-foreground">No strengths data available.</p>
+            )}
           </CardContent>
         </Card>
 
@@ -138,7 +141,7 @@ export default function IdeaValidationPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {analysis.risks.map((risk: string, i: number) => (
+            {(analysis.risks || []).map((risk: string, i: number) => (
               <div key={i} className="flex gap-3 text-sm leading-relaxed text-muted-foreground">
                 <div className="h-5 w-5 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 mt-0.5">
                   <AlertCircle className="h-3 w-3" />
@@ -146,6 +149,9 @@ export default function IdeaValidationPage() {
                 <span>{risk}</span>
               </div>
             ))}
+            {(!analysis.risks || analysis.risks.length === 0) && (
+              <p className="text-sm text-muted-foreground">No risks data available.</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -156,7 +162,7 @@ export default function IdeaValidationPage() {
         </CardHeader>
         <CardContent>
           <p className="leading-relaxed opacity-90">
-            {analysis.recommendation}
+            {analysis.recommendation || "No recommendation available at this time."}
           </p>
         </CardContent>
       </Card>
