@@ -16,24 +16,24 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const { login } = useAuth()
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setIsLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
 
-  try {
-    const data = await apiFetch("/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const data = await apiFetch("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
 
-    login(data.token, data.user);
-    toast.success("Login successful!");
-  } catch (error: any) {
-    toast.error(error.message || "Failed to login");
-  } finally {
-    setIsLoading(false);
-  }
-};
+      login(data.token, data.user);
+      toast.success("Login successful!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to login");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 
   return (
