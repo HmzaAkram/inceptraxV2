@@ -1,11 +1,13 @@
 from flask import Blueprint, request, jsonify, send_file
 from app.services.idea_analysis_service import IdeaAnalysisService
+from app.services.gemini_service import GeminiService
 from app.services.pdf_service import PDFService
 from app.services.market_service import MarketService
 from app.models.user_model import Idea
 from app.middleware.auth_middleware import token_required
 from app.utils.response_formatter import ResponseFormatter
 import os
+import json
 
 idea_bp = Blueprint('idea', __name__)
 
@@ -101,3 +103,71 @@ def fetch_market_research(current_user, idea_id):
         data={'market_data': results},
         message="Market data fetched successfully"
     )
+
+@idea_bp.route('/upload/voice', methods=['POST'])
+@token_required
+def upload_voice(current_user):
+    if 'file' not in request.files:
+        return ResponseFormatter.error("No file part")
+    
+    file = request.files['file']
+    if file.filename == '':
+        return ResponseFormatter.error("No selected file")
+        
+    try:
+        file_data = file.read()
+        mime_type = file.content_type or "audio/wav"
+        
+        # Extract idea from audio
+        extracted_text = GeminiService.extract_idea_from_media(
+            mime_type=mime_type, 
+            data=file_data,
+            prompt="Listen to this voice note and extract the startup idea details. Return valid JSON only."
+        )
+        
+        # Clean potential markdown code blocks
+        cleaned_json = extracted_text.replace('```json', '').replace('```', '').strip()
+        idea_data = json.loads(cleaned_json)
+        
+        return ResponseFormatter.success(
+            data=idea_data,
+            message="Voice processed successfully"
+        )
+        
+    except Exception as e:
+        print(f"Voice processing error: {str(e)}")
+        return ResponseFormatter.error(f"Failed to process voice: {str(e)}", status=500)
+
+@idea_bp.route('/upload/file', methods=['POST'])
+@token_required
+def upload_file(current_user):
+    if 'file' not in request.files:
+        return ResponseFormatter.error("No file part")
+    
+    file = request.files['file']
+    if file.filename == '':
+        return ResponseFormatter.error("No selected file")
+        
+    try:
+        file_data = file.read()
+        mime_type = file.content_type or "application/pdf"
+        
+        # Extract idea from file
+        extracted_text = GeminiService.extract_idea_from_media(
+            mime_type=mime_type, 
+            data=file_data,
+            prompt="Analyze this document/image and extract the startup idea details. Return valid JSON only."
+        )
+        
+        # Clean potential markdown code blocks
+        cleaned_json = extracted_text.replace('```json', '').replace('```', '').strip()
+        idea_data = json.loads(cleaned_json)
+        
+        return ResponseFormatter.success(
+            data=idea_data,
+            message="File processed successfully"
+        )
+        
+    except Exception as e:
+        print(f"File processing error: {str(e)}")
+        return ResponseFormatter.error(f"Failed to process file: {str(e)}", status=500)

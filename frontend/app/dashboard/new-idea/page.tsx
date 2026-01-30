@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
-import { Loader2, Sparkles } from "lucide-react"
+import { Loader2, Sparkles, Mic, Upload, FileUp, X, StopCircle } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -15,6 +15,9 @@ import { cn } from "@/lib/utils"
 export default function NewIdeaPage() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
 
   const [formData, setFormData] = useState({
     title: "",
@@ -47,6 +50,82 @@ export default function NewIdeaPage() {
     }
   }
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      const chunks: BlobPart[] = []
+
+      recorder.ondataavailable = (e) => chunks.push(e.data)
+      recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: "audio/webm" })
+        handleVoiceUpload(blob)
+        stream.getTracks().forEach(track => track.stop()) // Stop mic
+      }
+
+      recorder.start()
+      setMediaRecorder(recorder)
+      setIsRecording(true)
+    } catch (err) {
+      toast.error("Microphone access denied")
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop()
+      setIsRecording(false)
+      setMediaRecorder(null)
+    }
+  }
+
+  const handleVoiceUpload = async (audioBlob: Blob) => {
+    setIsUploading(true)
+    const formData = new FormData()
+    formData.append("file", audioBlob, "recording.webm")
+
+    try {
+      const response = await apiFetch("/ideas/upload/voice", {
+        method: "POST",
+        body: formData,
+      })
+
+      const { title, description } = response.data
+      setFormData({ title: title || "", description: description || "" })
+      toast.success("Idea extracted from voice!")
+    } catch (error: any) {
+      toast.error("Failed to process voice: " + error.message)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    const formData = new FormData()
+    formData.append("file", file)
+
+    try {
+      const response = await apiFetch("/ideas/upload/file", {
+        method: "POST",
+        body: formData,
+      })
+
+      const { title, description } = response.data
+      setFormData({ title: title || "", description: description || "" })
+      toast.success("Idea extracted from file!")
+    } catch (error: any) {
+      toast.error("Failed to process file: " + error.message)
+    } finally {
+      setIsUploading(false)
+      // Reset input
+      e.target.value = ""
+    }
+  }
+
   return (
     <div className="max-w-3xl mx-auto py-12">
       <div className="mb-12 text-center">
@@ -58,6 +137,45 @@ export default function NewIdeaPage() {
         </p>
       </div>
 
+      <div className="flex gap-4 mb-8 justify-center">
+        <Button
+          onClick={isRecording ? stopRecording : startRecording}
+          variant={isRecording ? "destructive" : "secondary"}
+          className="rounded-xl h-12 gap-2 shadow-sm"
+          disabled={isUploading}
+        >
+          {isRecording ? (
+            <>
+              <StopCircle className="h-4 w-4 animate-pulse" /> Stop Recording
+            </>
+          ) : (
+            <>
+              <Mic className="h-4 w-4" /> Voice Input
+            </>
+          )}
+        </Button>
+
+        <div className="relative">
+          <input
+            type="file"
+            id="file-upload"
+            className="hidden"
+            accept="application/pdf,image/*"
+            onChange={handleFileUpload}
+            disabled={isUploading}
+          />
+          <Label
+            htmlFor="file-upload"
+            className={cn(
+              "flex items-center gap-2 h-12 px-4 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer shadow-sm font-medium transition-colors",
+              isUploading && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            Upload File/PDF
+          </Label>
+        </div>
+      </div>
       <Card
         className={cn(
           "border-none overflow-hidden rounded-2xl shadow-2xl",

@@ -3,11 +3,15 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-    const headers = {
+    const headers: any = {
         'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
     };
+
+    if (options.body instanceof FormData) {
+        delete headers['Content-Type'];
+    }
 
     const response = await fetch(`${API_URL}${endpoint}`, {
         ...options,

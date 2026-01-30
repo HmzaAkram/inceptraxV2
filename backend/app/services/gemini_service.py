@@ -34,3 +34,41 @@ class GeminiService:
         )
         
         return response.text
+
+    @staticmethod
+    def extract_idea_from_media(mime_type, data, prompt="Extract the startup idea details"):
+        model = GeminiService.get_model()
+        
+        # Create a content part for the media
+        # Note: newer genai versions support dictionary format or direct Part objects
+        # We will use the dictionary format which is generally stable
+        content_part = {
+            "mime_type": mime_type,
+            "data": data
+        }
+        
+        # System instruction for extraction
+        system_instruction = """
+        You are an expert startup analyst. Your job is to extract structured idea details from the provided input (Audio, Image, or PDF).
+        
+        Output JSON format:
+        {
+            "title": "Short catchy title",
+            "description": "2-3 sentence summary",
+            "problem": "What problem does it solve?",
+            "solution": "How does it solve it?",
+            "audience": "Who is it for?",
+            "market": "Which market industry?"
+        }
+        """
+        
+        combined_prompt = [system_instruction, prompt, content_part]
+        
+        response = model.generate_content(
+            combined_prompt,
+            generation_config=genai.types.GenerationConfig(
+                response_mime_type="application/json",
+            )
+        )
+        
+        return response.text
