@@ -26,4 +26,33 @@ def create_app(config_class=Config):
     app.register_blueprint(idea_bp, url_prefix='/api/ideas')
     app.register_blueprint(user_bp, url_prefix='/api/users')
 
+    # Initialize background scheduler
+    with app.app_context():
+        init_scheduler()
+
     return app
+
+
+def init_scheduler():
+    """Initialize APScheduler for background tasks"""
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from app.scheduler import scan_all_active_watches
+    import atexit
+    
+    scheduler = BackgroundScheduler()
+    
+    # Schedule daily competitor scans at 9 AM
+    scheduler.add_job(
+        func=scan_all_active_watches,
+        trigger="cron",
+        hour=9,
+        minute=0,
+        id='competitor_scan_daily'
+    )
+    
+    scheduler.start()
+    print("[Scheduler] Background scheduler started. Daily competitor scans enabled.")
+    
+    # Shut down scheduler when app exits
+    atexit.register(lambda: scheduler.shutdown())
+

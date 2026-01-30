@@ -3,7 +3,9 @@ from app.services.idea_analysis_service import IdeaAnalysisService
 from app.services.gemini_service import GeminiService
 from app.services.pdf_service import PDFService
 from app.services.market_service import MarketService
+from app.services.competitor_monitoring_service import CompetitorMonitoringService
 from app.models.user_model import Idea
+from app.models.competitor_model import CompetitorWatch, CompetitorAlert
 from app.middleware.auth_middleware import token_required
 from app.utils.response_formatter import ResponseFormatter
 import os
@@ -281,3 +283,178 @@ def refine_idea_section(current_user, idea_id):
         import traceback
         traceback.print_exc()
         return ResponseFormatter.error(f"Failed to refine analysis: {str(e)}", status=500)
+
+
+# ============================================
+# Competitor Watch Endpoints
+# ============================================
+
+@idea_bp.route('/<int:idea_id>/competitor-watch', methods=['GET'])
+@token_required
+def get_competitor_watch(current_user, idea_id):
+    """Get competitor watch configuration for an idea"""
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+    
+    watch = CompetitorWatch.query.filter_by(idea_id=idea_id).first()
+    
+    if not watch:
+        return ResponseFormatter.success(
+            data={'watch': None, 'has_watch': False},
+            message="No competitor watch configured"
+        )
+    
+    return ResponseFormatter.success(
+        data={'watch': watch.to_dict(), 'has_watch': True},
+        message="Competitor watch retrieved"
+    )
+
+
+@idea_bp.route('/<int:idea_id>/competitor-watch', methods=['POST'])
+@token_required
+def create_or_update_competitor_watch(current_user, idea_id):
+    """Create or update competitor watch for an idea"""
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+    
+    data = request.get_json(silent=True) or {}
+    
+    try:
+        watch = CompetitorWatch.query.filter_by(idea_id=idea_id).first()
+        
+        if watch:
+            # Update existing watch
+            if 'is_active' in data:
+                watch.is_active = data['is_active']
+            if 'scan_frequency' in data:
+                watch.scan_frequency = data['scan_frequency']
+            if 'keywords' in data:
+                watch.keywords = data['keywords']
+        else:
+            # Create new watch
+            result = CompetitorMonitoringService.create_watch_for_idea(idea_id)
+            if 'error' in result:
+                print(f"Watch creation error for idea {idea_id}: {result['error']}")
+                return ResponseFormatter.error(result['error'])
+            watch = result['watch']
+        
+        from app import db
+        db.session.commit()
+        
+        return ResponseFormatter.success(
+            data={'watch': watch.to_dict()},
+            message="Competitor watch configured successfully"
+        )
+    except Exception as e:
+        print(f"Watch configuration exception: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return ResponseFormatter.error(f"Internal error: {str(e)}", status=500)
+
+
+@idea_bp.route('/<int:idea_id>/competitor-watch', methods=['DELETE'])
+@token_required
+def delete_competitor_watch(current_user, idea_id):
+    """Delete competitor watch for an idea"""
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+    
+    watch = CompetitorWatch.query.filter_by(idea_id=idea_id).first()
+    if not watch:
+        return ResponseFormatter.error("No watch found", status=404)
+    
+    from app import db
+    db.session.delete(watch)
+    db.session.commit()
+    
+    return ResponseFormatter.success(message="Competitor watch deleted")
+
+
+@idea_bp.route('/<int:idea_id>/alerts', methods=['GET'])
+@token_required
+def get_competitor_alerts(current_user, idea_id):
+    """Get competitor alerts for an idea"""
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+    
+    watch = CompetitorWatch.query.filter_by(idea_id=idea_id).first()
+    if not watch:
+        return ResponseFormatter.success(
+            data={'alerts': [], 'total': 0},
+            message="No watch configured"
+        )
+    
+    # Get query parameters
+    unread_only = request.args.get('unread_only', 'false').lower() == 'true'
+    limit = int(request.args.get('limit', 50))
+    
+    query = CompetitorAlert.query.filter_by(watch_id=watch.id)
+    
+    if unread_only:
+        query = query.filter_by(is_read=False)
+    
+    alerts = query.order_by(CompetitorAlert.discovered_at.desc()).limit(limit).all()
+    
+    return ResponseFormatter.success(
+        data={
+            'alerts': [alert.to_dict() for alert in alerts],
+            'total': len(alerts),
+            'unread_count': sum(1 for a in alerts if not a.is_read)
+        },
+        message="Alerts retrieved"
+    )
+
+
+@idea_bp.route('/alerts/<int:alert_id>/read', methods=['PATCH'])
+@token_required
+def mark_alert_read(current_user, alert_id):
+    """Mark an alert as read"""
+    alert = CompetitorAlert.query.get(alert_id)
+    if not alert:
+        return ResponseFormatter.error("Alert not found", status=404)
+    
+    # Verify ownership through watch -> idea -> user
+    watch = CompetitorWatch.query.get(alert.watch_id)
+    if not watch:
+        return ResponseFormatter.error("Watch not found", status=404)
+    
+    idea = Idea.query.get(watch.idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Unauthorized", status=403)
+    
+    alert.is_read = True
+    from app import db
+    db.session.commit()
+    
+    return ResponseFormatter.success(
+        data={'alert': alert.to_dict()},
+        message="Alert marked as read"
+    )
+
+
+@idea_bp.route('/<int:idea_id>/competitor-watch/scan', methods=['POST'])
+@token_required
+def trigger_competitor_scan(current_user, idea_id):
+    """Manually trigger a competitor scan"""
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+    
+    watch = CompetitorWatch.query.filter_by(idea_id=idea_id).first()
+    if not watch:
+        return ResponseFormatter.error("No watch configured", status=404)
+    
+    result = CompetitorMonitoringService.scan_competitors(watch.id)
+    
+    if 'error' in result:
+        return ResponseFormatter.error(result['error'])
+    
+    return ResponseFormatter.success(
+        data=result,
+        message=f"Scan completed. Found {result.get('new_alerts', 0)} new alerts."
+    )
+

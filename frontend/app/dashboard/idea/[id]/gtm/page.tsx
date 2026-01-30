@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Rocket, Loader2, ArrowLeft, CheckCircle } from "lucide-react"
+import { Rocket, Loader2, ArrowLeft, ArrowRight, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
@@ -140,7 +140,7 @@ export default function GTMStrategyPage() {
 
                         <Card className="border-none shadow-sm bg-accent/10 border-accent/20">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-xs font-bold uppercase text-accent tracking-widest">
+                                <CardTitle className="text-xs font-bold uppercase text-black tracking-widest">
                                     Early Traction (First 1,000 Users)
                                 </CardTitle>
                             </CardHeader>
@@ -150,6 +150,7 @@ export default function GTMStrategyPage() {
                                 </p>
                             </CardContent>
                         </Card>
+
                     </div>
                 </div>
 

@@ -66,11 +66,19 @@ export default function CompetitorAnalysisPage() {
       onUpdate={handleAnalysisUpdate}
     >
       <div className="space-y-8 max-w-6xl mx-auto">
-        <div className="flex items-start justify-between">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Competitor Analysis</h1>
-            <p className="text-muted-foreground mt-1">
-              Understanding the competitive landscape for {idea.title}.
+            <h1 className="text-3xl font-bold flex items-center gap-3">
+              Competitor Analysis
+              <Link href={`/dashboard/idea/${params.id}/competitor-watch`}>
+                <Button variant="outline" size="sm" className="gap-2 h-8 border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800">
+                  <Zap className="h-4 w-4 fill-indigo-500" />
+                  Live Watch
+                </Button>
+              </Link>
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Analysis of key competitors, their strengths, weaknesses, and potential threats to your success.
             </p>
           </div>
         </div>

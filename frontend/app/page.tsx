@@ -23,10 +23,6 @@ export default function LandingPage() {
         {/* Hero Section */}
         <section className="relative pt-0 pb-20 lg:pb-32 overflow-hidden">
           <div className="container px-4 text-center relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 animate-fade-in">
-              <Logo className="h-4 w-4 rounded-sm" />
-              <span>Inceptrax: AI-Powered Startup Analysis</span>
-            </div>
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-balance mb-6">
               Stop Guessing. <span className="text-primary">Start Building.</span><br />
               Verify Your Idea in Minutes.
