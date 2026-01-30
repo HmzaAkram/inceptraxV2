@@ -8,6 +8,7 @@ import { Zap, Loader2, ArrowLeft, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
+import { TextSelectionTooltip } from "@/components/text-selection-tooltip"
 
 export default function MVPBlueprintPage() {
     const params = useParams()
@@ -28,6 +29,16 @@ export default function MVPBlueprintPage() {
         fetchIdea()
     }, [params.id])
 
+    const handleAnalysisUpdate = (newData: any) => {
+        setIdea((prev: any) => ({
+            ...prev,
+            analysis_data: {
+                ...prev.analysis_data,
+                mvp_blueprint: newData
+            }
+        }))
+    }
+
     if (isLoading) {
         return (
             <div className="flex h-[60vh] items-center justify-center">
@@ -47,72 +58,81 @@ export default function MVPBlueprintPage() {
     const blueprint = idea.analysis_data?.mvp_blueprint || []
 
     return (
-        <div className="space-y-8 max-w-5xl mx-auto">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                    MVP Blueprint
-                </h1>
-                <p className="text-muted-foreground mt-1">
-                    Minimum Viable Product roadmap and AI capabilities for {idea.title}.
-                </p>
-            </div>
-
-            <Card className="border-none shadow-sm overflow-hidden">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-foreground">
-                        <Zap className="h-5 w-5 text-primary" /> Core Feature Set
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid gap-4">
-                        {(blueprint || []).map((feature: any, i: number) => (
-                            <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div className="space-y-1 max-w-xl break-words overflow-wrap-anywhere">
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="font-bold text-foreground break-words">{feature.feature_name || "Feature"}</h3>
-                                        <Badge variant="secondary" className="text-[10px] py-0 px-2 bg-primary/10 text-primary border-none whitespace-nowrap">
-                                            {feature.ai_capability || "AI"}
-                                        </Badge>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground break-words overflow-wrap-anywhere">
-                                        {feature.problem_solved}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-4 shrink-0">
-                                    <div className="text-right">
-                                        <p className="text-[10px] font-bold uppercase text-muted-foreground">Priority</p>
-                                        <Badge variant={feature.priority === "Must-have" ? "default" : "outline"} className="text-[10px] whitespace-nowrap">
-                                            {feature.priority || "N/A"}
-                                        </Badge>
-                                    </div>
-                                    <div className="text-right max-w-[100px] break-words">
-                                        <p className="text-sm font-bold text-foreground">{feature.business_value || "High"}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                        {(!blueprint || blueprint.length === 0) && (
-                            <div className="text-center py-6 text-muted-foreground italic border border-dashed rounded-xl">
-                                No MVP features mapped out yet.
-                            </div>
-                        )}
+        <TextSelectionTooltip
+            ideaId={Number(params.id)}
+            section="mvp"
+            sectionName="MVP Blueprint"
+            onUpdate={handleAnalysisUpdate}
+        >
+            <div className="space-y-8 max-w-5xl mx-auto">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                            MVP Blueprint
+                        </h1>
+                        <p className="text-muted-foreground mt-1">
+                            Minimum Viable Product roadmap and AI capabilities for {idea.title}.
+                        </p>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+
+                <Card className="border-none shadow-sm overflow-hidden">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-foreground">
+                            <Zap className="h-5 w-5 text-primary" /> Core Feature Set
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-4">
+                            {(blueprint || []).map((feature: any, i: number) => (
+                                <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div className="space-y-1 max-w-xl break-words overflow-wrap-anywhere">
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-bold text-foreground break-words">{feature.feature_name || "Feature"}</h3>
+                                            <Badge variant="secondary" className="text-[10px] py-0 px-2 bg-primary/10 text-primary border-none whitespace-nowrap">
+                                                {feature.ai_capability || "AI"}
+                                            </Badge>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground break-words overflow-wrap-anywhere">
+                                            {feature.problem_solved}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-4 shrink-0">
+                                        <div className="text-right">
+                                            <p className="text-[10px] font-bold uppercase text-muted-foreground">Priority</p>
+                                            <Badge variant={feature.priority === "Must-have" ? "default" : "outline"} className="text-[10px] whitespace-nowrap">
+                                                {feature.priority || "N/A"}
+                                            </Badge>
+                                        </div>
+                                        <div className="text-right max-w-[100px] break-words">
+                                            <p className="text-sm font-bold text-foreground">{feature.business_value || "High"}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {(!blueprint || blueprint.length === 0) && (
+                                <div className="text-center py-6 text-muted-foreground italic border border-dashed rounded-xl">
+                                    No MVP features mapped out yet.
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
 
 
-            <div className="flex justify-between pt-4 pb-8">
-                <Link href={`/dashboard/idea/${params.id}/monetization`}>
-                    <Button variant="outline" className="gap-2 pl-6 pr-6" size="lg">
-                        <ArrowLeft className="h-4 w-4" /> Previous
-                    </Button>
-                </Link>
-                <Link href={`/dashboard/idea/${params.id}/gtm`}>
-                    <Button className="gap-2 pl-6 pr-6" size="lg">
-                        Next: GTM Strategy <ArrowRight className="h-4 w-4" />
-                    </Button>
-                </Link>
-            </div>
-        </div >
+                <div className="flex justify-between pt-4 pb-8">
+                    <Link href={`/dashboard/idea/${params.id}/monetization`}>
+                        <Button variant="outline" className="gap-2 pl-6 pr-6" size="lg">
+                            <ArrowLeft className="h-4 w-4" /> Previous
+                        </Button>
+                    </Link>
+                    <Link href={`/dashboard/idea/${params.id}/gtm`}>
+                        <Button className="gap-2 pl-6 pr-6" size="lg">
+                            Next: GTM Strategy <ArrowRight className="h-4 w-4" />
+                        </Button>
+                    </Link>
+                </div>
+            </div >
+        </TextSelectionTooltip>
     )
 }

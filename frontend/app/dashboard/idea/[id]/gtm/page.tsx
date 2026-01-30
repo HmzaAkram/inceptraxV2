@@ -8,6 +8,7 @@ import { Rocket, Loader2, ArrowLeft, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
+import { TextSelectionTooltip } from "@/components/text-selection-tooltip"
 
 export default function GTMStrategyPage() {
     const params = useParams()
@@ -28,6 +29,16 @@ export default function GTMStrategyPage() {
         fetchIdea()
     }, [params.id])
 
+    const handleAnalysisUpdate = (newData: any) => {
+        setIdea((prev: any) => ({
+            ...prev,
+            analysis_data: {
+                ...prev.analysis_data,
+                gtm_strategy: newData
+            }
+        }))
+    }
+
     if (isLoading) {
         return (
             <div className="flex h-[60vh] items-center justify-center">
@@ -47,106 +58,115 @@ export default function GTMStrategyPage() {
     const gtm = idea.analysis_data?.gtm_strategy || {}
 
     return (
-        <div className="space-y-8 max-w-5xl mx-auto">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                    Go-To-Market Strategy
-                </h1>
-                <p className="text-muted-foreground mt-1">
-                    Launch and acquisition strategy for {idea.title}.
-                </p>
-            </div>
+        <TextSelectionTooltip
+            ideaId={Number(params.id)}
+            section="gtm"
+            sectionName="GTM Strategy"
+            onUpdate={handleAnalysisUpdate}
+        >
+            <div className="space-y-8 max-w-5xl mx-auto">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                            Go-To-Market Strategy
+                        </h1>
+                        <p className="text-muted-foreground mt-1">
+                            Launch and acquisition strategy for {idea.title}.
+                        </p>
+                    </div>
+                </div>
 
-            <div className="grid gap-8 lg:grid-cols-2">
-                <Card className="border-none shadow-sm overflow-hidden">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-foreground">
-                            <Rocket className="h-5 w-5 text-accent" /> Acquisition Channels
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {(gtm.acquisition_channels || []).map((ac: any, i: number) => (
-                            <div key={i} className="space-y-1 p-3 rounded-lg bg-muted/20">
-                                <h4 className="font-semibold text-sm text-foreground">{ac.channel || "Channel"}</h4>
-                                <p className="text-xs text-muted-foreground leading-relaxed">{ac.strategy}</p>
-                            </div>
-                        ))}
-                        {(!gtm.acquisition_channels || gtm.acquisition_channels.length === 0) && (
-                            <p className="text-sm text-muted-foreground italic">No acquisition channels data available.</p>
-                        )}
-                    </CardContent>
-                </Card>
-
-                <div className="space-y-8">
+                <div className="grid gap-8 lg:grid-cols-2">
                     <Card className="border-none shadow-sm overflow-hidden">
                         <CardHeader>
-                            <CardTitle className="text-sm font-medium">Funnel Strategy</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4 pb-6">
-                            <div className="flex items-center gap-4">
-                                <div className="flex flex-col items-center gap-1">
-                                    <div className="w-1 bg-border h-4" />
-                                    <div className="w-2 h-2 rounded-full bg-primary" />
-                                    <div className="w-1 bg-border h-4" />
-                                </div>
-                                <div>
-                                    <h4 className="text-xs font-bold uppercase text-muted-foreground">Awareness</h4>
-                                    <p className="text-sm text-foreground">{gtm.funnel_stages?.awareness || "N/A"}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <div className="flex flex-col items-center gap-1">
-                                    <div className="w-1 bg-border h-4" />
-                                    <div className="w-2 h-2 rounded-full bg-secondary" />
-                                    <div className="w-1 bg-border h-4" />
-                                </div>
-                                <div>
-                                    <h4 className="text-xs font-bold uppercase text-muted-foreground">Activation</h4>
-                                    <p className="text-sm text-foreground">{gtm.funnel_stages?.activation || "N/A"}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <div className="flex flex-col items-center gap-1">
-                                    <div className="w-1 bg-border h-4" />
-                                    <div className="w-2 h-2 rounded-full bg-accent" />
-                                    <div className="w-1 bg-border h-4" />
-                                </div>
-                                <div>
-                                    <h4 className="text-xs font-bold uppercase text-muted-foreground">Conversion</h4>
-                                    <p className="text-sm text-foreground">{gtm.funnel_stages?.conversion || "N/A"}</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-none shadow-sm bg-accent/10 border-accent/20">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-xs font-bold uppercase text-accent tracking-widest">
-                                Early Traction (First 1,000 Users)
+                            <CardTitle className="flex items-center gap-2 text-foreground">
+                                <Rocket className="h-5 w-5 text-accent" /> Acquisition Channels
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-foreground leading-relaxed">
-                                {gtm.early_traction || "Plan to be announced."}
-                            </p>
+                        <CardContent className="space-y-4">
+                            {(gtm.acquisition_channels || []).map((ac: any, i: number) => (
+                                <div key={i} className="space-y-1 p-3 rounded-lg bg-muted/20">
+                                    <h4 className="font-semibold text-sm text-foreground">{ac.channel || "Channel"}</h4>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">{ac.strategy}</p>
+                                </div>
+                            ))}
+                            {(!gtm.acquisition_channels || gtm.acquisition_channels.length === 0) && (
+                                <p className="text-sm text-muted-foreground italic">No acquisition channels data available.</p>
+                            )}
                         </CardContent>
                     </Card>
+
+                    <div className="space-y-8">
+                        <Card className="border-none shadow-sm overflow-hidden">
+                            <CardHeader>
+                                <CardTitle className="text-sm font-medium">Funnel Strategy</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4 pb-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex flex-col items-center gap-1">
+                                        <div className="w-1 bg-border h-4" />
+                                        <div className="w-2 h-2 rounded-full bg-primary" />
+                                        <div className="w-1 bg-border h-4" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-bold uppercase text-muted-foreground">Awareness</h4>
+                                        <p className="text-sm text-foreground">{gtm.funnel_stages?.awareness || "N/A"}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex flex-col items-center gap-1">
+                                        <div className="w-1 bg-border h-4" />
+                                        <div className="w-2 h-2 rounded-full bg-secondary" />
+                                        <div className="w-1 bg-border h-4" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-bold uppercase text-muted-foreground">Activation</h4>
+                                        <p className="text-sm text-foreground">{gtm.funnel_stages?.activation || "N/A"}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex flex-col items-center gap-1">
+                                        <div className="w-1 bg-border h-4" />
+                                        <div className="w-2 h-2 rounded-full bg-accent" />
+                                        <div className="w-1 bg-border h-4" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-bold uppercase text-muted-foreground">Conversion</h4>
+                                        <p className="text-sm text-foreground">{gtm.funnel_stages?.conversion || "N/A"}</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-none shadow-sm bg-accent/10 border-accent/20">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-xs font-bold uppercase text-accent tracking-widest">
+                                    Early Traction (First 1,000 Users)
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-foreground leading-relaxed">
+                                    {gtm.early_traction || "Plan to be announced."}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
-            </div>
 
 
-            <div className="flex justify-between pt-4 pb-8">
-                <Link href={`/dashboard/idea/${params.id}/mvp-blueprint`}>
-                    <Button variant="outline" className="gap-2 pl-6 pr-6" size="lg">
-                        <ArrowLeft className="h-4 w-4" /> Previous
-                    </Button>
-                </Link>
-                <Link href="/dashboard">
-                    <Button className="gap-2 pl-6 pr-6 bg-green-600 hover:bg-green-700" size="lg">
-                        Finish Analysis <CheckCircle className="h-4 w-4" />
-                    </Button>
-                </Link>
-            </div>
-        </div >
+                <div className="flex justify-between pt-4 pb-8">
+                    <Link href={`/dashboard/idea/${params.id}/mvp-blueprint`}>
+                        <Button variant="outline" className="gap-2 pl-6 pr-6" size="lg">
+                            <ArrowLeft className="h-4 w-4" /> Previous
+                        </Button>
+                    </Link>
+                    <Link href="/dashboard">
+                        <Button className="gap-2 pl-6 pr-6 bg-green-600 hover:bg-green-700" size="lg">
+                            Finish Analysis <CheckCircle className="h-4 w-4" />
+                        </Button>
+                    </Link>
+                </div>
+            </div >
+        </TextSelectionTooltip>
     )
 }

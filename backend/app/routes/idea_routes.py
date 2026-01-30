@@ -171,3 +171,113 @@ def upload_file(current_user):
     except Exception as e:
         print(f"File processing error: {str(e)}")
         return ResponseFormatter.error(f"Failed to process file: {str(e)}", status=500)
+
+@idea_bp.route('/<int:idea_id>/refine', methods=['POST'])
+@token_required
+def refine_idea_section(current_user, idea_id):
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+        
+    data = request.get_json()
+    if not data or 'section' not in data or 'query' not in data:
+        return ResponseFormatter.error("Missing section or query")
+        
+    section = data['section']
+    query = data['query']
+    
+    # Get current section data
+    analysis = idea.analysis_data or {}
+    
+    # Map frontend section names to DB keys
+    section_map = {
+        'market': 'market_research',
+        'competitors': 'competitors',
+        'monetization': 'monetization_strategy',
+        'mvp': 'mvp_blueprint',
+        'gtm': 'gtm_strategy', 
+        'validation': 'scores' # simpler mapping for validation
+    }
+    
+    db_key = section_map.get(section, section)
+    current_section_data = analysis.get(db_key, {})
+    
+    try:
+        # Call Gemini to refine
+        refined_json_text = GeminiService.refine_analysis(current_section_data, section, query)
+        
+        # Clean and parse response - handle various formats
+        cleaned_json = refined_json_text.strip()
+        
+        # Remove markdown code fences if present
+        if '```json' in cleaned_json:
+            cleaned_json = cleaned_json.split('```json')[1]
+            cleaned_json = cleaned_json.split('```')[0]
+        elif '```' in cleaned_json:
+            cleaned_json = cleaned_json.split('```')[1]
+            if cleaned_json.count('```') > 0:
+                cleaned_json = cleaned_json.split('```')[0]
+        
+        cleaned_json = cleaned_json.strip()
+        
+        # Try to find JSON object boundaries if there's extra text
+        if not cleaned_json.startswith('{') and not cleaned_json.startswith('['):
+            # Find first { or [
+            start_idx = min(
+                cleaned_json.find('{') if cleaned_json.find('{') != -1 else len(cleaned_json),
+                cleaned_json.find('[') if cleaned_json.find('[') != -1 else len(cleaned_json)
+            )
+            cleaned_json = cleaned_json[start_idx:]
+        
+        # Find the end of the JSON by counting braces
+        if cleaned_json.startswith('{'):
+            brace_count = 0
+            for i, char in enumerate(cleaned_json):
+                if char == '{':
+                    brace_count += 1
+                elif char == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        cleaned_json = cleaned_json[:i+1]
+                        break
+        elif cleaned_json.startswith('['):
+            bracket_count = 0
+            for i, char in enumerate(cleaned_json):
+                if char == '[':
+                    bracket_count += 1
+                elif char == ']':
+                    bracket_count -= 1
+                    if bracket_count == 0:
+                        cleaned_json = cleaned_json[:i+1]
+                        break
+        
+        try:
+            updated_data = json.loads(cleaned_json)
+        except json.JSONDecodeError as je:
+            print(f"JSON parsing failed. Raw response: {refined_json_text[:500]}")
+            print(f"Cleaned JSON: {cleaned_json[:500]}")
+            print(f"JSON Error: {str(je)}")
+            raise ValueError(f"Invalid JSON response from AI: {str(je)}")
+        
+        # Update specific section in analysis
+        analysis[db_key] = updated_data
+        
+        # Save to DB
+        idea.analysis_data = analysis
+        from app import db
+        db.session.commit()
+        
+        return ResponseFormatter.success(
+            data={
+                'section': section,
+                'updated_data': updated_data,
+                'message': "I've updated the plan based on your feedback."
+            },
+            message="Analysis refined successfully"
+        )
+        
+    except Exception as e:
+        print(f"Refinement error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return ResponseFormatter.error(f"Failed to refine analysis: {str(e)}", status=500)
