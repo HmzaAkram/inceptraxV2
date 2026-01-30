@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle2, AlertCircle, TrendingUp, ThumbsUp, Target, Loader2, Zap } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { CheckCircle2, AlertCircle, TrendingUp, ThumbsUp, Target, Loader2, Zap, ArrowRight } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 
 
@@ -166,6 +169,14 @@ export default function IdeaValidationPage() {
           </p>
         </CardContent>
       </Card>
-    </div>
+
+      <div className="flex justify-end pt-4 pb-8">
+        <Link href={`/dashboard/idea/${params.id}/market`}>
+          <Button className="gap-2 pl-6 pr-6" size="lg">
+            Next: Market Analysis <ArrowRight className="h-4 w-4" />
+          </Button>
+        </Link>
+      </div>
+    </div >
   )
 }

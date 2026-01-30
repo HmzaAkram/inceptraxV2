@@ -4,7 +4,9 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Zap, Loader2 } from "lucide-react"
+import { Zap, Loader2, ArrowLeft, ArrowRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import { apiFetch } from "@/lib/api"
 
 export default function MVPBlueprintPage() {
@@ -97,6 +99,20 @@ export default function MVPBlueprintPage() {
                     </div>
                 </CardContent>
             </Card>
-        </div>
+
+
+            <div className="flex justify-between pt-4 pb-8">
+                <Link href={`/dashboard/idea/${params.id}/monetization`}>
+                    <Button variant="outline" className="gap-2 pl-6 pr-6" size="lg">
+                        <ArrowLeft className="h-4 w-4" /> Previous
+                    </Button>
+                </Link>
+                <Link href={`/dashboard/idea/${params.id}/gtm`}>
+                    <Button className="gap-2 pl-6 pr-6" size="lg">
+                        Next: GTM Strategy <ArrowRight className="h-4 w-4" />
+                    </Button>
+                </Link>
+            </div>
+        </div >
     )
 }

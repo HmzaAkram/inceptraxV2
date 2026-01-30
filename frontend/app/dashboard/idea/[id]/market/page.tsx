@@ -5,7 +5,8 @@ import { useParams } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Globe, Users, Loader2 } from "lucide-react"
+import { Globe, Users, Loader2, ArrowRight, ArrowLeft } from "lucide-react"
+import Link from "next/link"
 import { apiFetch } from "@/lib/api"
 import { ExpandableText } from "@/components/ui/expandable-text"
 
@@ -217,6 +218,20 @@ export default function MarketResearchPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+
+
+      <div className="flex justify-between pt-4 pb-8">
+        <Link href={`/dashboard/idea/${params.id}/validation`}>
+          <Button variant="outline" className="gap-2 pl-6 pr-6" size="lg">
+            <ArrowLeft className="h-4 w-4" /> Previous
+          </Button>
+        </Link>
+        <Link href={`/dashboard/idea/${params.id}/competitors`}>
+          <Button className="gap-2 pl-6 pr-6" size="lg">
+            Next: Competitors <ArrowRight className="h-4 w-4" />
+          </Button>
+        </Link>
+      </div>
+    </div >
   )
 }

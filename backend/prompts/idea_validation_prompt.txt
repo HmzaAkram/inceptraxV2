@@ -20,6 +20,8 @@ Provide a detailed analysis including:
 11. MVP Blueprint (3-5 core AI features, capabilities used, priority)
 12. Go-To-Market Strategy (Acquisition channels, messaging, 1,000 users strategy)
 
+CRITICAL OUTPUT INSTRUCTION: Use simple, non-technical words. avoid tough vocabularies. The analysis must be easily understood by anyone.
+
 Return the response in the following JSON format:
 {{
     "overall_score": 85,
