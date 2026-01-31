@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Mail, MessageSquare, HelpCircle } from "lucide-react"
 import { toast } from "sonner"
+import { apiFetch } from "@/lib/api"
 
 export default function SupportPage() {
   const [name, setName] = useState("")
@@ -15,15 +16,15 @@ export default function SupportPage() {
   const [message, setMessage] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // ... inside component ...
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
-      // Replace with your API endpoint for support tickets
-      await fetch("/api/support", {
+      await apiFetch("/support", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, subject, message }),
       })
 
@@ -32,8 +33,8 @@ export default function SupportPage() {
       setEmail("")
       setSubject("")
       setMessage("")
-    } catch (error) {
-      toast.error("Failed to send your message. Please try again later.")
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send your message. Please try again later.")
       console.error(error)
     } finally {
       setIsSubmitting(false)

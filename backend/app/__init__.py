@@ -30,6 +30,9 @@ def create_app(config_class=Config):
     with app.app_context():
         init_scheduler()
 
+    from app.routes.contact_routes import contact_bp
+    app.register_blueprint(contact_bp, url_prefix='/api')
+    
     return app
 
 
