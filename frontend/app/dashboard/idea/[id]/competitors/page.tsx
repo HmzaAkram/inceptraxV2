@@ -10,6 +10,7 @@ import Link from "next/link"
 import { apiFetch } from "@/lib/api"
 import { ExpandableText } from "@/components/ui/expandable-text"
 import { TextSelectionTooltip } from "@/components/text-selection-tooltip"
+import { Refinable } from "@/components/refinable"
 
 export default function CompetitorAnalysisPage() {
   const params = useParams()
@@ -63,6 +64,7 @@ export default function CompetitorAnalysisPage() {
       ideaId={Number(params.id)}
       section="competitors"
       sectionName="Competitor Analysis"
+      currentData={competitors}
       onUpdate={handleAnalysisUpdate}
     >
       <div className="space-y-8 max-w-6xl mx-auto">
@@ -84,7 +86,7 @@ export default function CompetitorAnalysisPage() {
         </div>
 
         <div className="space-y-6">
-          {(competitors || []).map((comp: any) => (
+          {(competitors || []).map((comp: any, i: number) => (
             <Card
               key={comp.name}
               className="border border-border shadow-sm bg-card"
@@ -94,22 +96,32 @@ export default function CompetitorAnalysisPage() {
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-xl font-bold">{comp.name || "Unknown Competitor"}</h3>
-                      <Badge variant={comp.type === "Direct" ? "default" : "secondary"}>
-                        {comp.type || "N/A"}
-                      </Badge>
+                      <Refinable path={`[${i}].name`}>
+                        {(val) => <h3 className="text-xl font-bold">{val || "Unknown Competitor"}</h3>}
+                      </Refinable>
+                      <Refinable path={`[${i}].type`}>
+                        {(val) => (
+                          <Badge variant={val === "Direct" ? "default" : "secondary"}>
+                            {val || "N/A"}
+                          </Badge>
+                        )}
+                      </Refinable>
                     </div>
                     <div className="text-sm">
                       <span className="text-muted-foreground">Threat Level: </span>
-                      <span
-                        className={
-                          (comp.threat === "High" || comp.threat === "Medium")
-                            ? "text-destructive font-bold"
-                            : "text-amber-500 font-bold"
-                        }
-                      >
-                        {comp.threat}
-                      </span>
+                      <Refinable path={`[${i}].threat`}>
+                        {(val) => (
+                          <span
+                            className={
+                              (val === "High" || val === "Medium")
+                                ? "text-destructive font-bold"
+                                : "text-amber-500 font-bold"
+                            }
+                          >
+                            {val}
+                          </span>
+                        )}
+                      </Refinable>
                     </div>
                   </div>
                 </div>
@@ -123,16 +135,17 @@ export default function CompetitorAnalysisPage() {
                     </h4>
 
                     <ul className="space-y-3">
-                      {(comp.strengths || []).map((s: string, i: number) => (
-                        <li
-                          key={i}
-                          className="flex gap-3 items-start text-sm text-muted-foreground"
-                        >
-                          <span className="mt-2 h-2 w-2 rounded-full bg-green-500 shrink-0" />
-                          <div className="min-w-0">
-                            <ExpandableText text={s} lines={2} />
-                          </div>
-                        </li>
+                      {(comp.strengths || []).map((s: string, j: number) => (
+                        <Refinable key={j} path={`[${i}].strengths[${j}]`}>
+                          {(val) => (
+                            <li className="flex gap-3 items-start text-sm text-muted-foreground">
+                              <span className="mt-2 h-2 w-2 rounded-full bg-green-500 shrink-0" />
+                              <div className="min-w-0">
+                                <ExpandableText text={val} lines={2} />
+                              </div>
+                            </li>
+                          )}
+                        </Refinable>
                       ))}
                       {(!comp.strengths || comp.strengths.length === 0) && (
                         <li className="text-sm text-muted-foreground italic">No strengths listed.</li>
@@ -147,16 +160,17 @@ export default function CompetitorAnalysisPage() {
                     </h4>
 
                     <ul className="space-y-3">
-                      {(comp.weaknesses || []).map((w: string, i: number) => (
-                        <li
-                          key={i}
-                          className="flex gap-3 items-start text-sm text-muted-foreground"
-                        >
-                          <span className="mt-2 h-2 w-2 rounded-full bg-amber-500 shrink-0" />
-                          <div className="min-w-0">
-                            <ExpandableText text={w} lines={2} />
-                          </div>
-                        </li>
+                      {(comp.weaknesses || []).map((w: string, j: number) => (
+                        <Refinable key={j} path={`[${i}].weaknesses[${j}]`}>
+                          {(val) => (
+                            <li className="flex gap-3 items-start text-sm text-muted-foreground">
+                              <span className="mt-2 h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                              <div className="min-w-0">
+                                <ExpandableText text={val} lines={2} />
+                              </div>
+                            </li>
+                          )}
+                        </Refinable>
                       ))}
                       {(!comp.weaknesses || comp.weaknesses.length === 0) && (
                         <li className="text-sm text-muted-foreground italic">No weaknesses listed.</li>

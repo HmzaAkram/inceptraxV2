@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
 import { TextSelectionTooltip } from "@/components/text-selection-tooltip"
+import { Refinable } from "@/components/refinable"
 
 export default function GTMStrategyPage() {
     const params = useParams()
@@ -62,6 +63,7 @@ export default function GTMStrategyPage() {
             ideaId={Number(params.id)}
             section="gtm"
             sectionName="GTM Strategy"
+            currentData={gtm}
             onUpdate={handleAnalysisUpdate}
         >
             <div className="space-y-8 max-w-5xl mx-auto">
@@ -86,8 +88,12 @@ export default function GTMStrategyPage() {
                         <CardContent className="space-y-4">
                             {(gtm.acquisition_channels || []).map((ac: any, i: number) => (
                                 <div key={i} className="space-y-1 p-3 rounded-lg bg-muted/20">
-                                    <h4 className="font-semibold text-sm text-foreground">{ac.channel || "Channel"}</h4>
-                                    <p className="text-xs text-muted-foreground leading-relaxed">{ac.strategy}</p>
+                                    <Refinable path={`acquisition_channels[${i}].channel`}>
+                                        {(val) => <h4 className="font-semibold text-sm text-foreground">{val || "Channel"}</h4>}
+                                    </Refinable>
+                                    <Refinable path={`acquisition_channels[${i}].strategy`}>
+                                        {(val) => <p className="text-xs text-muted-foreground leading-relaxed">{val}</p>}
+                                    </Refinable>
                                 </div>
                             ))}
                             {(!gtm.acquisition_channels || gtm.acquisition_channels.length === 0) && (
@@ -110,7 +116,9 @@ export default function GTMStrategyPage() {
                                     </div>
                                     <div>
                                         <h4 className="text-xs font-bold uppercase text-muted-foreground">Awareness</h4>
-                                        <p className="text-sm text-foreground">{gtm.funnel_stages?.awareness || "N/A"}</p>
+                                        <Refinable path="funnel_stages.awareness">
+                                            {(val) => <p className="text-sm text-foreground">{val || "N/A"}</p>}
+                                        </Refinable>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4">
@@ -121,7 +129,9 @@ export default function GTMStrategyPage() {
                                     </div>
                                     <div>
                                         <h4 className="text-xs font-bold uppercase text-muted-foreground">Activation</h4>
-                                        <p className="text-sm text-foreground">{gtm.funnel_stages?.activation || "N/A"}</p>
+                                        <Refinable path="funnel_stages.activation">
+                                            {(val) => <p className="text-sm text-foreground">{val || "N/A"}</p>}
+                                        </Refinable>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4">
@@ -132,7 +142,9 @@ export default function GTMStrategyPage() {
                                     </div>
                                     <div>
                                         <h4 className="text-xs font-bold uppercase text-muted-foreground">Conversion</h4>
-                                        <p className="text-sm text-foreground">{gtm.funnel_stages?.conversion || "N/A"}</p>
+                                        <Refinable path="funnel_stages.conversion">
+                                            {(val) => <p className="text-sm text-foreground">{val || "N/A"}</p>}
+                                        </Refinable>
                                     </div>
                                 </div>
                             </CardContent>
@@ -145,9 +157,13 @@ export default function GTMStrategyPage() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-sm text-foreground leading-relaxed">
-                                    {gtm.early_traction || "Plan to be announced."}
-                                </p>
+                                <Refinable path="early_traction">
+                                    {(val) => (
+                                        <p className="text-sm text-foreground leading-relaxed">
+                                            {val || "Plan to be announced."}
+                                        </p>
+                                    )}
+                                </Refinable>
                             </CardContent>
                         </Card>
 

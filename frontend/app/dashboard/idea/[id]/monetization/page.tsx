@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
 import { TextSelectionTooltip } from "@/components/text-selection-tooltip"
+import { Refinable } from "@/components/refinable"
 
 export default function MonetizationPage() {
     const params = useParams()
@@ -62,6 +63,7 @@ export default function MonetizationPage() {
             ideaId={Number(params.id)}
             section="monetization"
             sectionName="Monetization"
+            currentData={monetization}
             onUpdate={handleAnalysisUpdate}
         >
             <div className="space-y-8 max-w-5xl mx-auto">
@@ -86,11 +88,15 @@ export default function MonetizationPage() {
                         <div className="grid gap-6 md:grid-cols-2">
                             <div className="space-y-2">
                                 <h3 className="font-semibold text-sm text-foreground">Pricing Model</h3>
-                                <p className="text-sm text-muted-foreground">{monetization.pricing_model || "N/A"}</p>
+                                <Refinable path="pricing_model">
+                                    {(val) => <p className="text-sm text-muted-foreground">{val || "N/A"}</p>}
+                                </Refinable>
                             </div>
                             <div className="space-y-2">
                                 <h3 className="font-semibold text-sm text-foreground">Conversion Logic</h3>
-                                <p className="text-sm text-muted-foreground">{monetization.conversion_logic || "N/A"}</p>
+                                <Refinable path="conversion_logic">
+                                    {(val) => <p className="text-sm text-muted-foreground">{val || "N/A"}</p>}
+                                </Refinable>
                             </div>
                         </div>
 
@@ -100,16 +106,26 @@ export default function MonetizationPage() {
                                 {(monetization.plans || []).map((plan: any, i: number) => (
                                     <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border">
                                         <div className="flex justify-between items-start mb-2">
-                                            <h4 className="font-bold text-sm">{plan.name || "Plan"}</h4>
-                                            <Badge variant="outline" className="text-[10px]">{plan.price || "N/A"}</Badge>
+                                            <Refinable path={`plans[${i}].name`}>
+                                                {(val) => <h4 className="font-bold text-sm">{val || "Plan"}</h4>}
+                                            </Refinable>
+                                            <Refinable path={`plans[${i}].price`}>
+                                                {(val) => <Badge variant="outline" className="text-[10px]">{val || "N/A"}</Badge>}
+                                            </Refinable>
                                         </div>
-                                        <p className="text-[10px] text-muted-foreground mb-3 leading-tight">{plan.target}</p>
+                                        <Refinable path={`plans[${i}].target`}>
+                                            {(val) => <p className="text-[10px] text-muted-foreground mb-3 leading-tight">{val}</p>}
+                                        </Refinable>
                                         <ul className="space-y-1">
                                             {(plan.features || []).map((f: string, j: number) => (
-                                                <li key={j} className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                                    <div className="h-1 w-1 rounded-full bg-primary shrink-0" />
-                                                    {f}
-                                                </li>
+                                                <Refinable key={j} path={`plans[${i}].features[${j}]`}>
+                                                    {(val) => (
+                                                        <li className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                                            <div className="h-1 w-1 rounded-full bg-primary shrink-0" />
+                                                            {val}
+                                                        </li>
+                                                    )}
+                                                </Refinable>
                                             ))}
                                         </ul>
                                     </div>
@@ -122,9 +138,13 @@ export default function MonetizationPage() {
 
                         <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
                             <h3 className="font-semibold text-xs text-primary uppercase tracking-wider mb-1">Recommended Strategy</h3>
-                            <p className="text-sm text-foreground leading-relaxed italic">
-                                "{monetization.recommended_strategy || "Strategy not available."}"
-                            </p>
+                            <Refinable path="recommended_strategy">
+                                {(val) => (
+                                    <p className="text-sm text-foreground leading-relaxed italic">
+                                        "{val || "Strategy not available."}"
+                                    </p>
+                                )}
+                            </Refinable>
                         </div>
                     </CardContent>
                 </Card>

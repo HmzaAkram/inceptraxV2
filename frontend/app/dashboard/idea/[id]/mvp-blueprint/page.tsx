@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
 import { TextSelectionTooltip } from "@/components/text-selection-tooltip"
+import { Refinable } from "@/components/refinable"
 
 export default function MVPBlueprintPage() {
     const params = useParams()
@@ -62,6 +63,7 @@ export default function MVPBlueprintPage() {
             ideaId={Number(params.id)}
             section="mvp"
             sectionName="MVP Blueprint"
+            currentData={blueprint}
             onUpdate={handleAnalysisUpdate}
         >
             <div className="space-y-8 max-w-5xl mx-auto">
@@ -88,24 +90,36 @@ export default function MVPBlueprintPage() {
                                 <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
                                     <div className="space-y-1 max-w-xl break-words overflow-wrap-anywhere">
                                         <div className="flex items-center gap-2">
-                                            <h3 className="font-bold text-foreground break-words">{feature.feature_name || "Feature"}</h3>
-                                            <Badge variant="secondary" className="text-[10px] py-0 px-2 bg-primary/10 text-primary border-none whitespace-nowrap">
-                                                {feature.ai_capability || "AI"}
-                                            </Badge>
+                                            <Refinable path={`[${i}].feature_name`}>
+                                                {(val) => <h3 className="font-bold text-foreground break-words">{val || "Feature"}</h3>}
+                                            </Refinable>
+                                            <Refinable path={`[${i}].ai_capability`}>
+                                                {(val) => (
+                                                    <Badge variant="secondary" className="text-[10px] py-0 px-2 bg-primary/10 text-primary border-none whitespace-nowrap">
+                                                        {val || "AI"}
+                                                    </Badge>
+                                                )}
+                                            </Refinable>
                                         </div>
-                                        <p className="text-sm text-muted-foreground break-words overflow-wrap-anywhere">
-                                            {feature.problem_solved}
-                                        </p>
+                                        <Refinable path={`[${i}].problem_solved`}>
+                                            {(val) => <p className="text-sm text-muted-foreground break-words overflow-wrap-anywhere">{val}</p>}
+                                        </Refinable>
                                     </div>
                                     <div className="flex items-center gap-4 shrink-0">
                                         <div className="text-right">
                                             <p className="text-[10px] font-bold uppercase text-muted-foreground">Priority</p>
-                                            <Badge variant={feature.priority === "Must-have" ? "default" : "outline"} className="text-[10px] whitespace-nowrap">
-                                                {feature.priority || "N/A"}
-                                            </Badge>
+                                            <Refinable path={`[${i}].priority`}>
+                                                {(val) => (
+                                                    <Badge variant={val === "Must-have" ? "default" : "outline"} className="text-[10px] whitespace-nowrap">
+                                                        {val || "N/A"}
+                                                    </Badge>
+                                                )}
+                                            </Refinable>
                                         </div>
                                         <div className="text-right max-w-[100px] break-words">
-                                            <p className="text-sm font-bold text-foreground">{feature.business_value || "High"}</p>
+                                            <Refinable path={`[${i}].business_value`}>
+                                                {(val) => <p className="text-sm font-bold text-foreground">{val || "High"}</p>}
+                                            </Refinable>
                                         </div>
                                     </div>
                                 </div>

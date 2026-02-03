@@ -25,6 +25,7 @@ interface CoFounderChatProps {
     isOpenExternal?: boolean;
     setIsOpenExternal?: (open: boolean) => void;
     initialContext?: string;
+    mode?: "edit" | "preview";
 }
 
 interface Message {
@@ -40,7 +41,8 @@ export function CoFounderChat({
     trigger,
     isOpenExternal,
     setIsOpenExternal,
-    initialContext
+    initialContext,
+    mode = "edit"
 }: CoFounderChatProps) {
     const [internalIsOpen, setInternalIsOpen] = useState(false);
     const isOpen = isOpenExternal !== undefined ? isOpenExternal : internalIsOpen;
@@ -85,14 +87,18 @@ export function CoFounderChat({
 
         try {
             const response = await apiFetch<{
-                section: string;
-                updated_data: any;
+                data: {
+                    section: string;
+                    updated_data: any;
+                    message: string;
+                };
                 message: string;
             }>(`/ideas/${ideaId}/refine`, {
                 method: "POST",
                 body: JSON.stringify({
                     section,
                     query: queryPayload,
+                    save: mode !== "preview" // Only save if not in preview mode
                 }),
             });
 
@@ -103,7 +109,11 @@ export function CoFounderChat({
                 ]);
 
                 onUpdate(response.data.updated_data);
-                toast.success(`${sectionName} updated successfully!`);
+                if (mode !== "preview") {
+                    toast.success(`${sectionName} updated successfully!`);
+                } else {
+                    toast.info(`Preview generated for ${sectionName}. Please review.`);
+                }
             }
         } catch (error) {
             console.error("Refinement error:", error);

@@ -1,6 +1,6 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-export async function apiFetch(endpoint: string, options: RequestInit = {}) {
+export async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
     const headers: any = {
@@ -25,7 +25,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/pdf')) {
-        return response.blob();
+        return response.blob() as any;
     }
 
     return response.json();

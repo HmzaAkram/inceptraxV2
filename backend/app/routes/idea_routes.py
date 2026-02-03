@@ -261,19 +261,26 @@ def refine_idea_section(current_user, idea_id):
             print(f"JSON Error: {str(je)}")
             raise ValueError(f"Invalid JSON response from AI: {str(je)}")
         
-        # Update specific section in analysis
-        analysis[db_key] = updated_data
+        # Check if we should save to DB (default: True, but can be False for preview)
+        should_save = data.get('save', True)
         
-        # Save to DB
-        idea.analysis_data = analysis
-        from app import db
-        db.session.commit()
+        if should_save:
+            # Update specific section in analysis
+            analysis[db_key] = updated_data
+            
+            # Save to DB
+            idea.analysis_data = analysis
+            from app import db
+            db.session.commit()
+            message = "I've updated the plan based on your feedback."
+        else:
+            message = "Here is a preview of the changes. Please approve to apply."
         
         return ResponseFormatter.success(
             data={
                 'section': section,
                 'updated_data': updated_data,
-                'message': "I've updated the plan based on your feedback."
+                'message': message
             },
             message="Analysis refined successfully"
         )
@@ -283,6 +290,51 @@ def refine_idea_section(current_user, idea_id):
         import traceback
         traceback.print_exc()
         return ResponseFormatter.error(f"Failed to refine analysis: {str(e)}", status=500)
+
+
+@idea_bp.route('/<int:idea_id>/section', methods=['PUT'])
+@token_required
+def update_section_data(current_user, idea_id):
+    """Update a specific section data directly"""
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+        
+    data = request.get_json()
+    if not data or 'section' not in data or 'data' not in data:
+        return ResponseFormatter.error("Missing section or data")
+        
+    section = data['section']
+    section_data = data['data']
+    
+    # Map frontend section names to DB keys
+    section_map = {
+        'market': 'market_research',
+        'competitors': 'competitors',
+        'monetization': 'monetization_strategy',
+        'mvp': 'mvp_blueprint',
+        'gtm': 'gtm_strategy', 
+        'validation': 'scores'
+    }
+    
+    db_key = section_map.get(section, section)
+    
+    # Update data
+    if idea.analysis_data is None:
+        idea.analysis_data = {}
+        
+    # We need to copy to ensure SQLAlchemy detects change
+    analysis = dict(idea.analysis_data)
+    analysis[db_key] = section_data
+    idea.analysis_data = analysis
+    
+    from app import db
+    db.session.commit()
+    
+    return ResponseFormatter.success(
+        data={'section': section, 'updated_data': section_data},
+        message=f"{section} updated successfully"
+    )
 
 
 # ============================================

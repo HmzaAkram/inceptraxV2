@@ -191,9 +191,9 @@ export default function MarketResearchPage() {
                   {segment.name}
                 </h3>
 
-                <p className="text-xs text-muted-foreground mb-3 break-words whitespace-normal">
+                <div className="text-xs text-muted-foreground mb-3 break-words whitespace-normal">
                   <ExpandableText text={segment.description} />
-                </p>
+                </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge

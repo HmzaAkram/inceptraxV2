@@ -13,10 +13,10 @@ export function ExpandableText({
   return (
     <div>
       <p className={`${!open ? `line-clamp-${lines}` : ""}`}>
-        {text}
+        {text || ""}
       </p>
 
-      {text.length > 120 && (
+      {text && text.length > 120 && (
         <button
           onClick={() => setOpen(!open)}
           className="text-xs text-primary mt-1"
