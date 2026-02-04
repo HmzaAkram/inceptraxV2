@@ -14,7 +14,7 @@ export function cn(...inputs: ClassValue[]) {
 export function get(obj: any, path: string, defaultValue: any = undefined): any {
   if (!obj || !path) return defaultValue;
 
-  const keys = path.replace(/\[(\d+)\]/g, '.$1').split('.');
+  const keys = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
   let result = obj;
 
   for (const key of keys) {

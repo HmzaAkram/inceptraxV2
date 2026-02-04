@@ -16,8 +16,17 @@ class CompetitorMonitoringService:
         if idea.title:
             keywords.add(idea.title.lower())
             
-        # Add industry/market terms if available (keep them short)
         if idea.analysis_data:
+            # Add competitor names (High Priority)
+            competitors = idea.analysis_data.get('competitors', [])
+            for comp in competitors:
+                if isinstance(comp, dict) and 'name' in comp:
+                    name = comp['name']
+                    # Filter out "Unknown" or generic names
+                    if name and len(name) < 40 and name.lower() not in ['unknown competitor', 'n/a', 'unknown']:
+                        keywords.add(name.lower())
+
+            # Add industry/market terms if available (keep them short)
             market_data = idea.analysis_data.get('market_research', {})
             if 'industry' in market_data:
                 # Only add if it's not a long sentence
@@ -29,11 +38,7 @@ class CompetitorMonitoringService:
         if idea.market and len(idea.market.split()) < 5:
             keywords.add(idea.market.lower())
             
-        # Extract specific high-value terms from solution/description instead of full text
-        # We look for capitalized words or specific phrases if possible, 
-        # but for now, let's stick to safe, short terms to avoid pollution.
-        
-        return list(keywords)[:5]  # Limit to 5 most relevant
+        return list(keywords)[:7]  # Limit to 7 most relevant
     
     @staticmethod
     def classify_alert_type(title, snippet):
@@ -65,6 +70,18 @@ class CompetitorMonitoringService:
         watch = CompetitorWatch.query.get(watch_id)
         if not watch or not watch.is_active:
             return {'error': 'Watch not found or inactive'}
+            
+        # Auto-update keywords if they seem insufficient (just title)
+        # This fixes the issue where initial watches created before analysis don't have competitor names
+        if watch.idea and (not watch.keywords or len(watch.keywords) <= 1):
+            try:
+                new_keywords = CompetitorMonitoringService.extract_keywords(watch.idea)
+                # If we found more/better keywords, update them
+                if new_keywords and len(new_keywords) > len(watch.keywords or []):
+                    watch.keywords = new_keywords
+                    db.session.commit()
+            except Exception as e:
+                print(f"Auto-update keywords failed: {e}")
         
         api_key = os.getenv('SERPAPI_KEY')
         if not api_key:
