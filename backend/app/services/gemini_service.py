@@ -73,39 +73,3 @@ class GeminiService:
         
         return response.text
 
-    @staticmethod
-    def refine_analysis(current_data, section, user_query):
-        model = GeminiService.get_model()
-        
-        # Convert current data to JSON string for the prompt
-        import json
-        current_json = json.dumps(current_data, indent=2)
-        
-        system_instruction = f"""You are a JSON API that refines business analysis data.
-
-CRITICAL RULES:
-1. You MUST return ONLY valid JSON
-2. You MUST maintain the EXACT same structure as the input
-3. DO NOT write explanatory text
-4. DO NOT use markdown formatting
-5. DO NOT add commentary
-
-INPUT SECTION: {section}
-CURRENT DATA:
-{current_json}
-
-USER REQUEST: {user_query}
-
-TASK: Modify the JSON data above to fulfill the user's request while keeping the same structure.
-
-OUTPUT: Return ONLY the updated JSON object/array with the exact same keys and structure."""
-        
-        response = model.generate_content(
-            system_instruction,
-            generation_config=genai.types.GenerationConfig(
-                response_mime_type="application/json",
-                temperature=0.7
-            )
-        )
-        
-        return response.text
