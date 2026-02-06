@@ -11,13 +11,13 @@ class GeminiService:
         
         genai.configure(api_key=api_key)
         # The user has specified MODEL_NAME = gemini-2.5-flash
-        model_name = current_app.config.get('GEMINI_MODEL', 'gemini-1.5-flash')
+        model_name = current_app.config.get('GEMINI_MODEL', 'gemini-3-flash-preview')
         try:
             return genai.GenerativeModel(model_name)
         except Exception as e:
             # Fallback to a known stable model if specified fails
             print(f"Failed to load model {model_name}, falling back...")
-            return genai.GenerativeModel('gemini-1.5-flash')
+            return genai.GenerativeModel('gemini-3-flash-preview')
 
     @staticmethod
     def generate_analysis(prompt, system_instruction=None):

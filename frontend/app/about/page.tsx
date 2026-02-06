@@ -2,32 +2,7 @@ import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Users, Globe, Target, Lightbulb, Heart, Zap } from "lucide-react";
 
-const teamMembers = [
-  {
-    name: "Hamza Akram",
-    role: "Founder & CEO",
-    bio: "Visionary entrepreneur passionate about AI-driven startup success.",
-    img: "/placeholder-user.jpg",
-  },
-  {
-    name: "Zaki Haider",
-    role: "Co-Founder & CTO",
-    bio: "Tech enthusiast building intelligent systems for founders.",
-    img: "/placeholder-user.jpg",
-  },
-  {
-    name: "Abdul Sami",
-    role: "Head of Product",
-    bio: "Turning ideas into actionable products with data-driven insights.",
-    img: "/placeholder-user.jpg",
-  },
-  {
-    name: "Muhammad Mudassir",
-    role: "Lead AI Engineer",
-    bio: "Designs AI models that make startup validation fast and reliable.",
-    img: "/placeholder-user.jpg",
-  },
-]
+
 
 export default function AboutPage() {
   return (
@@ -102,29 +77,7 @@ export default function AboutPage() {
             </div>
           </section>
 
-          {/* Team Section */}
-          <section className="space-y-12 pt-10">
-            <h2 className="text-3xl font-bold mb-12 text-center text-primary">Meet The Team</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-              {teamMembers.map((member) => (
-                <div
-                  key={member.name}
-                  className="group flex flex-col items-center text-center bg-card p-6 rounded-2xl border border-border shadow-sm hover:border-primary/50 transition-all"
-                >
-                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-primary/20 group-hover:border-primary transition-all mb-4 bg-muted">
-                    <img
-                      src={member.img}
-                      alt={member.name}
-                      className="object-cover w-full h-full opacity-75 group-hover:opacity-100 transition-opacity"
-                    />
-                  </div>
-                  <h3 className="font-bold text-lg">{member.name}</h3>
-                  <p className="text-primary font-medium text-sm mb-2">{member.role}</p>
-                  <p className="text-xs text-muted-foreground">{member.bio}</p>
-                </div>
-              ))}
-            </div>
-          </section>
+          
 
         </div>
       </main>
