@@ -36,7 +36,7 @@ class GeminiService:
         return response.text
 
     @staticmethod
-    def extract_idea_from_media(mime_type, data, prompt="Extract the startup idea details"):
+    def extract_idea_from_media(mime_type, data, prompt="Extract the startup idea details", system_instruction=None):
         model = GeminiService.get_model()
         
         # Create a content part for the media
@@ -48,19 +48,20 @@ class GeminiService:
         }
         
         # System instruction for extraction
-        system_instruction = """
-        You are an expert startup analyst. Your job is to extract structured idea details from the provided input (Audio, Image, or PDF).
-        
-        Output JSON format:
-        {
-            "title": "Short catchy title",
-            "description": "2-3 sentence summary",
-            "problem": "What problem does it solve?",
-            "solution": "How does it solve it?",
-            "audience": "Who is it for?",
-            "market": "Which market industry?"
-        }
-        """
+        if not system_instruction:
+            system_instruction = """
+            You are an expert startup analyst. Your job is to extract structured idea details from the provided input (Audio, Image, or PDF).
+            
+            Output JSON format:
+            {
+                "title": "Short catchy title",
+                "description": "2-3 sentence summary",
+                "problem": "What problem does it solve?",
+                "solution": "How does it solve it?",
+                "audience": "Who is it for?",
+                "market": "Which market industry?"
+            }
+            """
         
         combined_prompt = [system_instruction, prompt, content_part]
         

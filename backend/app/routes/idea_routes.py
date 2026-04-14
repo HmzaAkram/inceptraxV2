@@ -10,6 +10,7 @@ from app.middleware.auth_middleware import token_required
 from app.utils.response_formatter import ResponseFormatter
 import os
 import json
+from app import db
 
 idea_bp = Blueprint('idea', __name__)
 
@@ -120,11 +121,18 @@ def upload_voice(current_user):
         file_data = file.read()
         mime_type = file.content_type or "audio/wav"
         
+        system_instruction = """You are an expert transcriber. Your job is to extract the EXACT text from the provided input verbatim. Do not summarize, outline, or alter the text.
+Output JSON format:
+{
+    "title": "",
+    "description": "exact transcribed text here"
+}"""
         # Extract idea from audio
         extracted_text = GeminiService.extract_idea_from_media(
             mime_type=mime_type, 
             data=file_data,
-            prompt="Listen to this voice note and extract the startup idea details. Return valid JSON only."
+            prompt="Transcribe this audio recording EXACTLY. Return valid JSON only.",
+            system_instruction=system_instruction
         )
         
         # Clean potential markdown code blocks
@@ -159,11 +167,18 @@ def upload_file(current_user):
         file_data = file.read()
         mime_type = file.content_type or "application/pdf"
         
+        system_instruction = """You are an expert text extractor. Your job is to extract the EXACT text from the provided document, image, or presentation verbatim. Do not summarize, outline, or alter the text.
+Output JSON format:
+{
+    "title": "",
+    "description": "exact extracted text here"
+}"""
         # Extract idea from file
         extracted_text = GeminiService.extract_idea_from_media(
             mime_type=mime_type, 
             data=file_data,
-            prompt="Analyze this document/image and extract the startup idea details. Return valid JSON only."
+            prompt="Extract the EXACT text from this file verbatim. Return valid JSON only.",
+            system_instruction=system_instruction
         )
         
         # Clean potential markdown code blocks

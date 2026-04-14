@@ -196,10 +196,10 @@ export default function NewIdeaPage() {
       })
 
       const { title, description } = response.data
-      setFormData({ 
-        title: title || "", 
-        description: description || "" 
-      })
+      setFormData(prev => ({ 
+        title: prev.title || title || "", 
+        description: prev.description ? `${prev.description}\n\n${description || ""}`.trim() : description || "" 
+      }))
       setAudioChunks([])
       toast.success("Idea extracted from voice recording!")
     } catch (error: any) {
@@ -214,11 +214,14 @@ export default function NewIdeaPage() {
     if (!file) return
 
     // File validation
-    const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'text/plain']
+    const validTypes = [
+      'application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'text/plain',
+      'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    ]
     const maxSize = 10 * 1024 * 1024 // 10MB
 
-    if (!validTypes.includes(file.type)) {
-      toast.error("Please upload PDF, image, or text files only")
+    if (!validTypes.includes(file.type) && !file.name.endsWith('.ppt') && !file.name.endsWith('.pptx')) {
+      toast.error("Please upload PDF, Image, PPT, or Text files only")
       return
     }
 
@@ -245,8 +248,11 @@ export default function NewIdeaPage() {
       })
 
       const { title, description } = response.data
-      setFormData({ title: title || "", description: description || "" })
-      toast.success("Idea extracted from file!")
+      setFormData(prev => ({ 
+        title: prev.title || title || "", 
+        description: prev.description ? `${prev.description}\n\n${description || ""}`.trim() : description || "" 
+      }))
+      toast.success("Text extracted from file!")
     } catch (error: any) {
       toast.error("Failed to process file: " + error.message)
       setFilePreview(null)
@@ -306,7 +312,7 @@ export default function NewIdeaPage() {
             type="file"
             id="file-upload"
             className="hidden"
-            accept=".pdf,.jpg,.jpeg,.png,.gif,.txt"
+            accept=".pdf,.jpg,.jpeg,.png,.gif,.txt,.ppt,.pptx"
             onChange={handleFileUpload}
             disabled={isUploading}
           />
@@ -322,7 +328,7 @@ export default function NewIdeaPage() {
             ) : (
               <Upload className="h-4 w-4" />
             )}
-            Upload File/PDF
+            Upload File/PPT/PDF
           </Label>
         </div>
 
