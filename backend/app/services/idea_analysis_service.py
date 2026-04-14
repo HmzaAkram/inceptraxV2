@@ -2,7 +2,7 @@ import os
 from flask import current_app
 import json
 from app.services.gemini_service import GeminiService
-from app.models.user_model import Idea
+from app.models.user_model import Idea, User
 from app import db
 
 class IdeaAnalysisService:
@@ -42,6 +42,11 @@ class IdeaAnalysisService:
             # Update idea with results
             idea.analysis_data = analysis_data
             idea.status = 'completed'
+            # Increment credits
+            user = User.query.get(idea.user_id)
+            if user:
+                user.api_credits_used += 1
+                
             db.session.commit()
             
             return analysis_data

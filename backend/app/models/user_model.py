@@ -11,6 +11,9 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_admin = db.Column(db.Boolean, default=False)
+    api_credits_used = db.Column(db.Integer, default=0)
+
 
     ideas = db.relationship('Idea', backref='author', lazy=True)
 
@@ -26,8 +29,14 @@ class User(db.Model):
             "first_name": self.first_name,
             "last_name": self.last_name,
             "email": self.email,
+            "is_admin": self.is_admin,
+            "api_credits_used": self.api_credits_used,
             "created_at": self.created_at.isoformat()
         }
+
+    def increment_api_credits(self, count=1):
+        self.api_credits_used += count
+        db.session.commit()
 
 class Idea(db.Model):
     __tablename__ = 'ideas'

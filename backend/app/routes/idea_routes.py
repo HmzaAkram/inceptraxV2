@@ -131,8 +131,13 @@ def upload_voice(current_user):
         cleaned_json = extracted_text.replace('```json', '').replace('```', '').strip()
         idea_data = json.loads(cleaned_json)
         
+        # Increment admin tracking credits
+        current_user.api_credits_used += 1
+        db.session.commit()
+        
         return ResponseFormatter.success(
             data=idea_data,
+
             message="Voice processed successfully"
         )
         
@@ -165,8 +170,13 @@ def upload_file(current_user):
         cleaned_json = extracted_text.replace('```json', '').replace('```', '').strip()
         idea_data = json.loads(cleaned_json)
         
+        # Increment admin tracking credits
+        current_user.api_credits_used += 1
+        db.session.commit()
+        
         return ResponseFormatter.success(
             data=idea_data,
+
             message="File processed successfully"
         )
         

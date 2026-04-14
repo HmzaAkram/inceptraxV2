@@ -41,6 +41,7 @@ export const metadata: Metadata = {
 
 import { AuthProvider } from "@/components/auth-provider"
 import { Toaster } from "@/components/ui/sonner"
+import { VisitTracker } from "@/components/visit-tracker"
 
 export default function RootLayout({
   children,
@@ -51,6 +52,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased`} suppressHydrationWarning={true}>
         <AuthProvider>
+          <VisitTracker />
           {children}
           <Toaster position="top-center" richColors />
         </AuthProvider>
