@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, send_file
 from app.services.idea_analysis_service import IdeaAnalysisService
 from app.services.gemini_service import GeminiService
 from app.services.pdf_service import PDFService
+from app.services.ppt_service import PPTService
 from app.services.market_service import MarketService
 from app.services.competitor_monitoring_service import CompetitorMonitoringService
 from app.models.user_model import Idea
@@ -69,6 +70,42 @@ def download_report(current_user, idea_id):
         )
     except Exception as e:
         return ResponseFormatter.error(f"Failed to generate PDF: {str(e)}", status=500)
+
+@idea_bp.route('/<int:idea_id>/download-ppt', methods=['GET'])
+@token_required
+def download_ppt(current_user, idea_id):
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+        
+    try:
+        file_path = PPTService.generate_presentation(idea)
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=f"{idea.title.replace(' ', '_')}-Presentation.pptx"
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return ResponseFormatter.error(f"Failed to generate PPT: {str(e)}", status=500)
+
+@idea_bp.route('/<int:idea_id>/investor-pitch', methods=['POST'])
+@token_required
+def generate_investor_pitches(current_user, idea_id):
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+        
+    pitches = IdeaAnalysisService.generate_investor_pitches(idea.id)
+    
+    if isinstance(pitches, dict) and 'error' in pitches:
+        return ResponseFormatter.error(pitches['error'], status=500)
+        
+    return ResponseFormatter.success(
+        data={'pitches': pitches},
+        message="Investor pitches generated successfully"
+    )
 
 @idea_bp.route('/<int:idea_id>', methods=['DELETE'])
 @token_required

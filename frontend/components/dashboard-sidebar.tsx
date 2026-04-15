@@ -15,6 +15,7 @@ import {
   CreditCard,
   Zap,
   Rocket,
+  Briefcase,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -40,6 +41,7 @@ export function DashboardSidebar() {
     { name: "Monetization", href: `/dashboard/idea/${currentIdeaId}/monetization`, icon: CreditCard },
     { name: "MVP Blueprint", href: `/dashboard/idea/${currentIdeaId}/mvp-blueprint`, icon: Zap },
     { name: "Go-To-Market", href: `/dashboard/idea/${currentIdeaId}/gtm`, icon: Rocket },
+    { name: "Investor Pitches", href: `/dashboard/idea/${currentIdeaId}/investor`, icon: Briefcase },
   ] : []
 
   return (

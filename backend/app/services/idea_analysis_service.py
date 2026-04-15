@@ -128,3 +128,53 @@ class IdeaAnalysisService:
         db.session.delete(idea)
         db.session.commit()
         return True
+
+    @staticmethod
+    def generate_investor_pitches(idea_id):
+        idea = Idea.query.get(idea_id)
+        if not idea:
+            return {"error": "Idea not found"}
+            
+        # Check if already generated
+        if idea.analysis_data and "investor_pitches" in idea.analysis_data:
+            return idea.analysis_data["investor_pitches"]
+            
+        system_instruction = """You are an expert startup pitch creator and investor. 
+Generate 3 distinct investor pitches based on the provided idea and its analysis data.
+The format must be valid JSON matching this schema exactly:
+{
+    "pitches": [
+        {
+            "style": "string (e.g., The Visionary, The Data-Driven, The Storyteller)",
+            "hook": "string (A compelling opening sentence)",
+            "problem": "string (The core problem)",
+            "solution": "string (How the idea solves it)",
+            "traction_market": "string (Why now and the market size)",
+            "ask": "string (The call to action or funding ask)",
+            "full_pitch": "string (The complete 1-2 minute compiled pitch text)"
+        }
+    ]
+}
+Generate exactly 3 pitches."""
+        
+        prompt = f"Title: {idea.title}\nDescription: {idea.description}\nProblem: {idea.problem}\nSolution: {idea.solution}\nMarket: {idea.market}\nAnalysis Data: {json.dumps(idea.analysis_data)}"
+        
+        try:
+            pitches_json = GeminiService.extract_idea_from_media("text/plain", bytes(prompt, "utf-8"), prompt, system_instruction)
+            cleaned_json = pitches_json.replace('```json', '').replace('```', '').strip()
+            pitches_data = json.loads(cleaned_json)
+            
+            # Save into Idea analysis_data
+            if not idea.analysis_data:
+                idea.analysis_data = {}
+            new_data = dict(idea.analysis_data)
+            new_data["investor_pitches"] = pitches_data.get("pitches", [])
+            idea.analysis_data = new_data
+            db.session.commit()
+            
+            return pitches_data.get("pitches", [])
+            
+        except Exception as e:
+            print(f"Error generating pitches: {str(e)}")
+            return {"error": "Failed to generate pitches"}
+
