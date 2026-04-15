@@ -200,12 +200,94 @@ Output JSON format:
         return ResponseFormatter.error(f"Failed to process file: {str(e)}", status=500)
 
 
+# ============================================
+# AI Layers Engine Endpoints
+# ============================================
 
+@idea_bp.route('/layers/start', methods=['POST'])
+@token_required
+def layers_start(current_user):
+    """Start an AI Layers Engine session with a seed idea and get the first question."""
+    from app.services.layers_service import LayersService
+    data = request.get_json(silent=True) or {}
+    initial_idea = data.get('initial_idea', '').strip()
+
+    if not initial_idea:
+        return ResponseFormatter.error("Please provide an initial idea to start.")
+
+    try:
+        result = LayersService.get_first_question(initial_idea)
+        current_user.api_credits_used += 1
+        db.session.commit()
+        return ResponseFormatter.success(data=result, message="First layer question generated")
+    except Exception as e:
+        print(f"Layers start error: {str(e)}")
+        return ResponseFormatter.error(f"Failed to start session: {str(e)}", status=500)
+
+
+@idea_bp.route('/layers/chat', methods=['POST'])
+@token_required
+def layers_chat(current_user):
+    """Continue the Layers session — give the last answer, get the next question."""
+    from app.services.layers_service import LayersService
+    data = request.get_json(silent=True) or {}
+    initial_idea = data.get('initial_idea', '').strip()
+    history = data.get('history', [])  # alternating [question, answer, question, answer, ...]
+
+    if not initial_idea:
+        return ResponseFormatter.error("Missing initial_idea")
+    if not history:
+        return ResponseFormatter.error("Missing conversation history")
+
+    try:
+        result = LayersService.get_next_question(initial_idea, history)
+        current_user.api_credits_used += 1
+        db.session.commit()
+        return ResponseFormatter.success(data=result, message="Next layer question generated")
+    except Exception as e:
+        print(f"Layers chat error: {str(e)}")
+        return ResponseFormatter.error(f"Failed to get next question: {str(e)}", status=500)
+
+
+@idea_bp.route('/layers/finalize', methods=['POST'])
+@token_required
+def layers_finalize(current_user):
+    """Synthesize the conversation into a full Idea and trigger analysis."""
+    from app.services.layers_service import LayersService
+    data = request.get_json(silent=True) or {}
+    initial_idea = data.get('initial_idea', '').strip()
+    history = data.get('history', [])
+
+    if not initial_idea:
+        return ResponseFormatter.error("Missing initial_idea")
+
+    try:
+        # Synthesize the conversation into structured idea data
+        synthesized = LayersService.synthesize_idea(initial_idea, history)
+
+        # Create the Idea record in DB
+        idea = IdeaAnalysisService.create_idea(current_user.id, synthesized)
+
+        # Trigger full AI analysis
+        IdeaAnalysisService.process_idea_analysis(idea.id)
+
+        current_user.api_credits_used += 2
+        db.session.commit()
+
+        return ResponseFormatter.success(
+            data={'idea': idea.to_dict()},
+            message="Idea synthesized and analyzed successfully",
+            status=201
+        )
+    except Exception as e:
+        print(f"Layers finalize error: {str(e)}")
+        return ResponseFormatter.error(f"Failed to finalize idea: {str(e)}", status=500)
 
 
 # ============================================
 # Competitor Watch Endpoints
 # ============================================
+
 
 @idea_bp.route('/<int:idea_id>/competitor-watch', methods=['GET'])
 @token_required
