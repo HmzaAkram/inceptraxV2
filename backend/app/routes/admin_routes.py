@@ -1,4 +1,6 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file, current_app
+import os
+import shutil
 from app.models.user_model import User
 from app.models.stats_model import SystemStats
 from app.middleware.auth_middleware import token_required, admin_required
@@ -80,3 +82,54 @@ def update_user_role(current_user, user_id):
         "message": f"User role updated to {'Admin' if user.is_admin else 'User'}",
         "user": user.to_dict()
     }), 200
+
+@admin_bp.route('/backup', methods=['GET'])
+@token_required
+@admin_required
+def backup_database(current_user):
+    db_path = os.path.join(current_app.instance_path, 'inceptrax.db')
+    if not os.path.exists(db_path):
+        db_path = os.path.join(current_app.root_path, '..', 'inceptrax.db')
+        
+    if not os.path.exists(db_path):
+        return jsonify({"error": "Database file not found"}), 404
+        
+    date_str = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    filename = f"inceptrax_backup_{date_str}.db"
+    
+    return send_file(
+        db_path,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/x-sqlite3'
+    )
+
+@admin_bp.route('/restore', methods=['POST'])
+@token_required
+@admin_required
+def restore_database(current_user):
+    if 'file' not in request.files:
+        return jsonify({"error": "No file parameter provided"}), 400
+        
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+        
+    if not file.filename.endswith('.db'):
+        return jsonify({"error": "Only .db files are accepted"}), 400
+        
+    db_path = os.path.join(current_app.instance_path, 'inceptrax.db')
+    if not os.path.exists(db_path):
+        db_path = os.path.join(current_app.root_path, '..', 'inceptrax.db')
+        
+    try:
+        temp_path = db_path + '.temp'
+        file.save(temp_path)
+        
+        db.engine.dispose()
+        
+        shutil.move(temp_path, db_path)
+        
+        return jsonify({"message": "Database restored successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

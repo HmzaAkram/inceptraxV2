@@ -24,7 +24,7 @@ export async function apiFetch<T = any>(endpoint: string, options: RequestInit =
     }
 
     const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/pdf')) {
+    if (contentType && (contentType.includes('application/pdf') || contentType.includes('application/x-sqlite3'))) {
         return response.blob() as any;
     }
 
