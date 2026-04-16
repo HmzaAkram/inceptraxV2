@@ -11,6 +11,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import {
   Avatar,
   AvatarFallback,
@@ -28,12 +30,28 @@ export default function SettingsPage() {
   })
 
   const [password, setPassword] = useState("")
+  const [savingCoFounder, setSavingCoFounder] = useState(false)
+  
+  const [coFounderForm, setCoFounderForm] = useState({
+    is_discoverable: false,
+    bio: "",
+    skills: "",
+    looking_for: "",
+    linkedin_url: "",
+  })
 
   // ------------------ FETCH PROFILE ------------------
   async function fetchProfile() {
     try {
       const res = await apiFetch("/users/profile")
       setForm(res.data.user)
+      setCoFounderForm({
+        is_discoverable: res.data.user.is_discoverable || false,
+        bio: res.data.user.bio || "",
+        skills: res.data.user.skills || "",
+        looking_for: res.data.user.looking_for || "",
+        linkedin_url: res.data.user.linkedin_url || "",
+      })
     } catch (err) {
       console.error(err)
     } finally {
@@ -58,6 +76,22 @@ export default function SettingsPage() {
       alert(err.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  // ------------------ SAVE CO-FOUNDER PROFILE ------------------
+  async function handleSaveCoFounder() {
+    setSavingCoFounder(true)
+    try {
+      await apiFetch("/cofounder/profile", {
+        method: "PUT",
+        body: JSON.stringify(coFounderForm),
+      })
+      alert("Co-Founder preferences updated successfully")
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setSavingCoFounder(false)
     }
   }
 
@@ -153,6 +187,68 @@ export default function SettingsPage() {
 
           <Button onClick={handleSaveProfile} disabled={saving}>
             {saving ? "Saving..." : "Save Changes"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* CO-FOUNDER NETWORK */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Co-Founder Network</CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          <div className="flex items-center space-x-2">
+            <Switch
+              checked={coFounderForm.is_discoverable}
+              onCheckedChange={(checked) =>
+                setCoFounderForm({ ...coFounderForm, is_discoverable: checked })
+              }
+              id="discoverable"
+            />
+            <Label htmlFor="discoverable">Make me discoverable to other founders</Label>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <Label>Bio</Label>
+              <Textarea
+                placeholder="A short intro about yourself..."
+                value={coFounderForm.bio}
+                onChange={(e) => setCoFounderForm({ ...coFounderForm, bio: e.target.value })}
+              />
+            </div>
+            
+            <div>
+              <Label>Skills (Comma separated)</Label>
+              <Input
+                placeholder="React, Python, Marketing"
+                value={coFounderForm.skills}
+                onChange={(e) => setCoFounderForm({ ...coFounderForm, skills: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label>Looking For</Label>
+              <Input
+                placeholder="A technical co-founder skilled in AI"
+                value={coFounderForm.looking_for}
+                onChange={(e) => setCoFounderForm({ ...coFounderForm, looking_for: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label>LinkedIn URL</Label>
+              <Input
+                placeholder="https://linkedin.com/in/..."
+                value={coFounderForm.linkedin_url}
+                onChange={(e) => setCoFounderForm({ ...coFounderForm, linkedin_url: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <Button onClick={handleSaveCoFounder} disabled={savingCoFounder}>
+            {savingCoFounder ? "Saving..." : "Save Co-Founder Settings"}
           </Button>
         </CardContent>
       </Card>

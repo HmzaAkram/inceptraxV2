@@ -31,6 +31,20 @@ def upgrade_db():
                 except sqlite3.OperationalError as e:
                     print("api_credits_used maybe already exists:", e)
 
+                # Co-Founder Discovery columns
+                for col_def in [
+                    'is_discoverable BOOLEAN DEFAULT 0 NOT NULL',
+                    'bio TEXT',
+                    'skills VARCHAR(500)',
+                    'looking_for VARCHAR(500)',
+                    'linkedin_url VARCHAR(300)'
+                ]:
+                    col_name = col_def.split()[0]
+                    try:
+                        cursor.execute(f'ALTER TABLE users ADD COLUMN {col_def}')
+                    except sqlite3.OperationalError as e:
+                        print(f"{col_name} maybe already exists:", e)
+
                 # Visibility / sharing columns on ideas
                 try:
                     cursor.execute('ALTER TABLE ideas ADD COLUMN is_public BOOLEAN DEFAULT 0 NOT NULL')
@@ -62,6 +76,24 @@ def upgrade_db():
                     print("Comments table created/ensured")
                 except sqlite3.OperationalError as e:
                     print("Error creating comments table:", e)
+
+                # Messages table
+                try:
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS messages (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            sender_id INTEGER NOT NULL,
+                            receiver_id INTEGER NOT NULL,
+                            content TEXT NOT NULL,
+                            is_read BOOLEAN DEFAULT 0,
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY(sender_id) REFERENCES users(id),
+                            FOREIGN KEY(receiver_id) REFERENCES users(id)
+                        )
+                    ''')
+                    print("Messages table created/ensured")
+                except sqlite3.OperationalError as e:
+                    print("Error creating messages table:", e)
 
                 
                 conn.commit()

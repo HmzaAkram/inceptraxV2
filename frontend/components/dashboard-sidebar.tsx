@@ -17,6 +17,7 @@ import {
   Rocket,
   Briefcase,
   FlaskConical,
+  Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -26,6 +27,7 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "My Ideas", href: "/dashboard/ideas", icon: Lightbulb },
   { name: "Reports", href: "/dashboard/reports", icon: FileText },
+  { name: "Co-Founder Network", href: "/dashboard/cofounder", icon: Users },
 ]
 
 export function DashboardSidebar() {
