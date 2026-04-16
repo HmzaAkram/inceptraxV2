@@ -26,7 +26,6 @@ import { Logo } from "@/components/logo"
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "My Ideas", href: "/dashboard/ideas", icon: Lightbulb },
-  { name: "Reports", href: "/dashboard/reports", icon: FileText },
   { name: "Co-Founder Network", href: "/dashboard/cofounder", icon: Users },
 ]
 

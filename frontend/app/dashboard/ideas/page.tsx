@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trash2, Plus, ArrowRight, Loader2, Lightbulb, Search, Globe, Lock, Link2, Check } from "lucide-react"
+import { Trash2, Plus, ArrowRight, Loader2, Lightbulb, Search, Globe, Lock, Link2, Check, Download } from "lucide-react"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
+import JSZip from "jszip"
+import { saveAs } from "file-saver"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -37,6 +39,10 @@ export default function IdeasPage() {
     const [isDeleting, setIsDeleting] = useState<number | null>(null)
     const [isTogglingVisibility, setIsTogglingVisibility] = useState<number | null>(null)
     const [copiedId, setCopiedId] = useState<number | null>(null)
+    
+    // PDF Export states
+    const [isDownloading, setIsDownloading] = useState<number | null>(null)
+    const [isExporting, setIsExporting] = useState(false)
 
     useEffect(() => {
         async function fetchIdeas() {
@@ -96,6 +102,64 @@ export default function IdeasPage() {
         }
     }
 
+    const handleDownloadPdf = async (ideaId: number, title: string) => {
+        setIsDownloading(ideaId)
+        try {
+            const blob: Blob = await apiFetch(`/ideas/${ideaId}/download`)
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `${title.replace(/\s+/g, '-')}-Analysis.pdf`
+            document.body.appendChild(a)
+            a.click()
+            window.URL.revokeObjectURL(url)
+            document.body.removeChild(a)
+            toast.success("Report downloaded successfully")
+        } catch (error: any) {
+            toast.error(error.message || "Failed to download report (Make sure you validated it first)")
+        } finally {
+            setIsDownloading(null)
+        }
+    }
+
+    const handleExportAll = async () => {
+        if (ideas.length === 0) {
+            toast.error("No ideas to export")
+            return
+        }
+        setIsExporting(true)
+        try {
+            let exportedCount = 0
+            const zip = new JSZip()
+            
+            for (const idea of ideas) {
+                // Only try to export if it has a validation score (meaning a report exists)
+                if (idea.validation_score && idea.validation_score > 0) {
+                    try {
+                        const blob: Blob = await apiFetch(`/ideas/${idea.id}/download`)
+                        zip.file(`${idea.title.replace(/\s+/g, '-')}-Analysis.pdf`, blob)
+                        exportedCount++
+                    } catch (e) {
+                        console.warn('Skipping idea without pdf', idea.id)
+                    }
+                }
+            }
+            
+            if (exportedCount === 0) {
+                toast.error("No valid reports found to export. Validate an idea first.")
+                return
+            }
+
+            const content = await zip.generateAsync({ type: "blob" })
+            saveAs(content, "All_Idea_Reports.zip")
+            toast.success(`${exportedCount} reports exported successfully!`)
+        } catch (error: any) {
+            toast.error(error.message || "Failed to export reports")
+        } finally {
+            setIsExporting(false)
+        }
+    }
+
     const filteredIdeas = ideas.filter(idea =>
         idea.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         idea.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -110,17 +174,28 @@ export default function IdeasPage() {
     }
 
     return (
-        <div className="space-y-8 max-w-6xl mx-auto">
+        <div className="space-y-8 max-w-6xl mx-auto p-4 md:p-8">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-foreground">My Ideas</h1>
                     <p className="text-muted-foreground mt-1">Manage all your startup concepts and validation reports.</p>
                 </div>
-                <Button asChild className="rounded-xl gap-2 font-semibold">
-                    <Link href="/dashboard/new-idea">
-                        <Plus className="h-5 w-5" /> New Idea
-                    </Link>
-                </Button>
+                <div className="flex gap-2">
+                    <Button 
+                        variant="secondary"
+                        className="rounded-xl gap-2 font-semibold"
+                        onClick={handleExportAll}
+                        disabled={isExporting || ideas.length === 0}
+                    >
+                        {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                        Export All Reports
+                    </Button>
+                    <Button asChild className="rounded-xl gap-2 font-semibold">
+                        <Link href="/dashboard/new-idea">
+                            <Plus className="h-5 w-5" /> New Idea
+                        </Link>
+                    </Button>
+                </div>
             </div>
 
             <div className="relative max-w-md">
@@ -237,11 +312,25 @@ export default function IdeasPage() {
                                     )}
                                 </div>
 
-                                <Button variant="outline" className="w-full rounded-xl gap-2 bg-transparent border-primary/20 text-primary hover:bg-primary/5 h-10" asChild>
-                                    <Link href={`/dashboard/idea/${idea.id}/validation`}>
-                                        View Analysis <ArrowRight className="h-4 w-4" />
-                                    </Link>
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" className="flex-1 rounded-xl gap-2 bg-transparent border-primary/20 text-primary hover:bg-primary/5 h-10" asChild>
+                                        <Link href={`/dashboard/idea/${idea.id}/validation`}>
+                                            View <ArrowRight className="h-4 w-4" />
+                                        </Link>
+                                    </Button>
+                                    {idea.validation_score && idea.validation_score > 0 ? (
+                                        <Button 
+                                            variant="secondary" 
+                                            size="icon"
+                                            className="h-10 w-10 rounded-xl"
+                                            onClick={() => handleDownloadPdf(idea.id, idea.title)}
+                                            disabled={isDownloading === idea.id}
+                                            title="Download PDF Report"
+                                        >
+                                            {isDownloading === idea.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                        </Button>
+                                    ) : null}
+                                </div>
                             </CardContent>
                         </Card>
                     ))
