@@ -178,3 +178,98 @@ Generate exactly 3 pitches."""
             print(f"Error generating pitches: {str(e)}")
             return {"error": "Failed to generate pitches"}
 
+    @staticmethod
+    def generate_research_hub(idea_id):
+        idea = Idea.query.get(idea_id)
+        if not idea:
+            return {"error": "Idea not found"}
+
+        # Return cached result if available
+        if idea.analysis_data and "research_hub" in idea.analysis_data:
+            return idea.analysis_data["research_hub"]
+
+        system_instruction = """You are an expert startup strategist, researcher, and execution coach.
+Given a startup idea and its full analysis data, generate a comprehensive Research & Execution Hub.
+The output must be a single valid JSON object matching this schema EXACTLY:
+{
+    "research_links": [
+        {
+            "title": "string (name of the resource/report)",
+            "url": "string (real, working URL to an authoritative source)",
+            "source": "string (domain name, e.g. 'Statista', 'McKinsey', 'Product Hunt')",
+            "relevance": "string (1 sentence on why this matters for this idea)"
+        }
+    ],
+    "execution_checklist": [
+        {
+            "phase": "string (one of: Validation, MVP, Growth)",
+            "step": "string (short action title)",
+            "description": "string (1-2 sentences on how to do it)"
+        }
+    ],
+    "tool_recommendations": [
+        {
+            "name": "string (tool name)",
+            "category": "string (e.g. 'No-Code Builder', 'Analytics', 'CRM', 'Marketing')",
+            "url": "string (real tool URL)",
+            "use_case": "string (specific to this idea)"
+        }
+    ],
+    "action_plan": [
+        {
+            "week": number,
+            "focus": "string (theme for the week)",
+            "tasks": ["string", "string", "string"]
+        }
+    ]
+}
+Rules:
+- research_links: provide exactly 6 items with REAL, accurate URLs.
+- execution_checklist: provide 4-5 items per phase (Validation, MVP, Growth) = 12-15 total, ORDERED by phase.
+- tool_recommendations: provide exactly 8 tools relevant to the idea's industry and needs.
+- action_plan: provide exactly 8 weeks.
+- All content must be SPECIFIC to the provided idea — no generic advice.
+- Return ONLY the JSON object, no markdown, no explanation."""
+
+        analysis = idea.analysis_data or {}
+        prompt = f"""Startup Idea: {idea.title}
+Description: {idea.description}
+Problem Being Solved: {idea.problem}
+Solution: {idea.solution}
+Target Audience: {idea.audience}
+Market: {idea.market}
+
+Analysis Summary:
+- Overall Score: {analysis.get('overall_score', 'N/A')}/100
+- GTM Strategy: {json.dumps(analysis.get('gtm_strategy', {}))}
+- MVP Blueprint: {json.dumps(analysis.get('mvp_blueprint', []))}
+- Market Research TAM/SAM/SOM: {json.dumps(analysis.get('market_research', {}).get('tam', 'N/A'))}, {json.dumps(analysis.get('market_research', {}).get('sam', 'N/A'))}, {json.dumps(analysis.get('market_research', {}).get('som', 'N/A'))}
+- Strengths: {json.dumps(analysis.get('strengths', []))}
+- Risks: {json.dumps(analysis.get('risks', []))}
+
+Generate the Research & Execution Hub JSON now."""
+
+        try:
+            hub_json = GeminiService.extract_idea_from_media(
+                "text/plain",
+                bytes(prompt, "utf-8"),
+                prompt,
+                system_instruction
+            )
+            cleaned_json = hub_json.replace('```json', '').replace('```', '').strip()
+            hub_data = json.loads(cleaned_json)
+
+            # Cache in analysis_data
+            if not idea.analysis_data:
+                idea.analysis_data = {}
+            new_data = dict(idea.analysis_data)
+            new_data["research_hub"] = hub_data
+            idea.analysis_data = new_data
+            db.session.commit()
+
+            return hub_data
+
+        except Exception as e:
+            print(f"Error generating research hub for idea {idea_id}: {str(e)}")
+            return {"error": f"Failed to generate research hub: {str(e)}"}
+

@@ -108,6 +108,30 @@ def generate_investor_pitches(current_user, idea_id):
         message="Investor pitches generated successfully"
     )
 
+
+@idea_bp.route('/<int:idea_id>/research-hub', methods=['POST'])
+@token_required
+def generate_research_hub(current_user, idea_id):
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+
+    hub_data = IdeaAnalysisService.generate_research_hub(idea.id)
+
+    if isinstance(hub_data, dict) and 'error' in hub_data:
+        return ResponseFormatter.error(hub_data['error'], status=500)
+
+    # Only charge a credit if it was freshly generated (not cached)
+    if not (idea.analysis_data and "research_hub" in (idea.analysis_data or {})):
+        current_user.api_credits_used += 1
+        db.session.commit()
+
+    return ResponseFormatter.success(
+        data={'hub': hub_data},
+        message="Research hub generated successfully"
+    )
+
+
 @idea_bp.route('/<int:idea_id>', methods=['DELETE'])
 @token_required
 def delete_idea(current_user, idea_id):
