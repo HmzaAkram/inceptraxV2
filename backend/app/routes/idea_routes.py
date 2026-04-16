@@ -5,12 +5,13 @@ from app.services.pdf_service import PDFService
 from app.services.ppt_service import PPTService
 from app.services.market_service import MarketService
 from app.services.competitor_monitoring_service import CompetitorMonitoringService
-from app.models.user_model import Idea
+from app.models.user_model import Idea, Comment
 from app.models.competitor_model import CompetitorWatch, CompetitorAlert
 from app.middleware.auth_middleware import token_required
 from app.utils.response_formatter import ResponseFormatter
 import os
 import json
+import secrets
 from app import db
 
 idea_bp = Blueprint('idea', __name__)
@@ -493,5 +494,122 @@ def trigger_competitor_scan(current_user, idea_id):
     return ResponseFormatter.success(
         data=result,
         message=f"Scan completed. Found {result.get('new_alerts', 0)} new alerts."
+    )
+
+
+# ============================================
+# Public / Private Sharing Endpoints
+# ============================================
+
+@idea_bp.route('/<int:idea_id>/visibility', methods=['PATCH'])
+@token_required
+def toggle_visibility(current_user, idea_id):
+    """Toggle idea visibility between public and private.
+
+    When making public for the first time, a stable share_token is generated
+    and persisted so the link remains valid even if the idea is later made
+    private and then re-published.
+    """
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+
+    data = request.get_json(silent=True) or {}
+
+    # Caller can pass { "is_public": true/false } explicitly, or we just flip
+    if 'is_public' in data:
+        idea.is_public = bool(data['is_public'])
+    else:
+        idea.is_public = not idea.is_public
+
+    # Generate a share token the first time the idea is made public
+    if idea.is_public and not idea.share_token:
+        idea.share_token = secrets.token_urlsafe(32)
+
+    db.session.commit()
+
+    return ResponseFormatter.success(
+        data={'idea': idea.to_dict()},
+        message="Idea is now public" if idea.is_public else "Idea is now private"
+    )
+
+
+@idea_bp.route('/shared/<string:share_token>', methods=['GET'])
+def get_public_idea(share_token):
+    """Public, no-auth endpoint to view a shared idea by its share token.
+
+    Allows viewing if the idea is public OR if the user has the direct link
+    (supporting the 'Unlisted/Private sharing with teammates' request).
+    """
+    idea = Idea.query.filter_by(share_token=share_token).first()
+
+    if not idea:
+        return ResponseFormatter.error(
+            "This link is invalid.", status=404
+        )
+
+    # Note: We removed the check `if not idea.is_public` to allow Unlisted sharing.
+    # The share_token acts as the 'password' to the idea.
+
+    return ResponseFormatter.success(
+        data={'idea': idea.to_public_dict()},
+        message="Idea fetched successfully"
+    )
+
+
+@idea_bp.route('/public', methods=['GET'])
+def get_public_ideas():
+    """Returns all ideas that are marked as public to be listed in the gallery."""
+    ideas = Idea.query.filter_by(is_public=True).order_by(Idea.created_at.desc()).all()
+
+    return ResponseFormatter.success(
+        data={'ideas': [idea.to_public_dict() for idea in ideas]},
+        message="Public ideas gallery fetched"
+    )
+
+
+# ============================================
+# Shared Idea Interaction Endpoints
+# ============================================
+
+@idea_bp.route('/shared/<string:share_token>/comments', methods=['GET'])
+def get_shared_comments(share_token):
+    """Fetch comments for a shared idea via its share token."""
+    idea = Idea.query.filter_by(share_token=share_token).first()
+    if not idea:
+        return ResponseFormatter.error("Invalid share token", status=404)
+        
+    comments = Comment.query.filter_by(idea_id=idea.id).order_by(Comment.created_at.asc()).all()
+    return ResponseFormatter.success(
+        data={'comments': [c.to_dict() for c in comments]},
+        message="Comments fetched successfully"
+    )
+
+@idea_bp.route('/shared/<string:share_token>/comments', methods=['POST'])
+def post_shared_comment(share_token):
+    """Post a comment to a shared idea via its share token."""
+    idea = Idea.query.filter_by(share_token=share_token).first()
+    if not idea:
+        return ResponseFormatter.error("Invalid share token", status=404)
+        
+    data = request.get_json(silent=True) or {}
+    content = data.get('content', '').strip()
+    author_name = data.get('author_name', 'Anonymous').strip() or 'Anonymous'
+    
+    if not content:
+        return ResponseFormatter.error("Comment content is required")
+        
+    comment = Comment(
+        content=content,
+        author_name=author_name,
+        idea_id=idea.id
+    )
+    db.session.add(comment)
+    db.session.commit()
+    
+    return ResponseFormatter.success(
+        data={'comment': comment.to_dict()},
+        message="Comment posted successfully",
+        status=201
     )
 

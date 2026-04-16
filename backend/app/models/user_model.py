@@ -63,6 +63,10 @@ class Idea(db.Model):
     })
     analysis_data = db.Column(db.JSON, nullable=True)
 
+    # Visibility / sharing
+    is_public = db.Column(db.Boolean, default=False, nullable=False)
+    share_token = db.Column(db.String(64), unique=True, nullable=True)
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -76,9 +80,28 @@ class Idea(db.Model):
             "market": self.market,
             "status": self.status,
             "analysis_status": self.analysis_status,
-            "analysis_status": self.analysis_status,
             "analysis_data": self.analysis_data,
-            "validation_score": self.validation_score
+            "validation_score": self.validation_score,
+            "is_public": self.is_public,
+            "share_token": self.share_token
+        }
+
+    def to_public_dict(self):
+        """Safe subset of idea data for unauthenticated public share view."""
+        return {
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "created_at": self.created_at.isoformat(),
+            "problem": self.problem,
+            "solution": self.solution,
+            "audience": self.audience,
+            "market": self.market,
+            "status": self.status,
+            "analysis_data": self.analysis_data,
+            "validation_score": self.validation_score,
+            "is_public": self.is_public,
+            "share_token": self.share_token
         }
 
     @property
@@ -86,3 +109,21 @@ class Idea(db.Model):
         if self.analysis_data and 'overall_score' in self.analysis_data:
             return self.analysis_data.get('overall_score', 0)
         return 0
+
+class Comment(db.Model):
+    __tablename__ = 'comments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    author_name = db.Column(db.String(50), default="Anonymous")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    idea_id = db.Column(db.Integer, db.ForeignKey('ideas.id'), nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "content": self.content,
+            "author_name": self.author_name,
+            "created_at": self.created_at.isoformat(),
+            "idea_id": self.idea_id
+        }

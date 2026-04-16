@@ -30,11 +30,45 @@ def upgrade_db():
                     cursor.execute('ALTER TABLE users ADD COLUMN api_credits_used INTEGER DEFAULT 0')
                 except sqlite3.OperationalError as e:
                     print("api_credits_used maybe already exists:", e)
+
+                # Visibility / sharing columns on ideas
+                try:
+                    cursor.execute('ALTER TABLE ideas ADD COLUMN is_public BOOLEAN DEFAULT 0 NOT NULL')
+                except sqlite3.OperationalError as e:
+                    print("is_public maybe already exists:", e)
+
+                try:
+                    cursor.execute('ALTER TABLE ideas ADD COLUMN share_token VARCHAR(64)')
+                except sqlite3.OperationalError as e:
+                    print("share_token maybe already exists:", e)
+
+                try:
+                    cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS ix_ideas_share_token ON ideas (share_token)')
+                except sqlite3.OperationalError as e:
+                    print("share_token index maybe already exists:", e)
+
+                # Comments table
+                try:
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS comments (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            content TEXT NOT NULL,
+                            author_name VARCHAR(50) DEFAULT 'Anonymous',
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            idea_id INTEGER NOT NULL,
+                            FOREIGN KEY(idea_id) REFERENCES ideas(id)
+                        )
+                    ''')
+                    print("Comments table created/ensured")
+                except sqlite3.OperationalError as e:
+                    print("Error creating comments table:", e)
+
                 
                 conn.commit()
                 conn.close()
             except Exception as e:
                 print("Error connecting to sqlite3 directly:", e)
+
 
         # Seed the admin user if not exists
         admin_email = "hmzaakram295@gmail.com"

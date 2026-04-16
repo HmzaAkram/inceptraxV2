@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trash2, Plus, ArrowRight, Loader2, Lightbulb, Search } from "lucide-react"
+import { Trash2, Plus, ArrowRight, Loader2, Lightbulb, Search, Globe, Lock, Link2, Check } from "lucide-react"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
 import { Input } from "@/components/ui/input"
@@ -26,6 +26,8 @@ interface Idea {
     description: string;
     created_at: string;
     validation_score: number;
+    is_public: boolean;
+    share_token: string | null;
 }
 
 export default function IdeasPage() {
@@ -33,6 +35,8 @@ export default function IdeasPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
     const [isDeleting, setIsDeleting] = useState<number | null>(null)
+    const [isTogglingVisibility, setIsTogglingVisibility] = useState<number | null>(null)
+    const [copiedId, setCopiedId] = useState<number | null>(null)
 
     useEffect(() => {
         async function fetchIdeas() {
@@ -59,6 +63,36 @@ export default function IdeasPage() {
             toast.error(error.message || "Failed to delete idea")
         } finally {
             setIsDeleting(null)
+        }
+    }
+
+    const handleToggleVisibility = async (idea: Idea) => {
+        setIsTogglingVisibility(idea.id)
+        try {
+            const response = await apiFetch(`/ideas/${idea.id}/visibility`, {
+                method: "PATCH",
+                body: JSON.stringify({ is_public: !idea.is_public }),
+            })
+            const updated: Idea = response.data.idea
+            setIdeas(prev => prev.map(i => i.id === idea.id ? updated : i))
+            toast.success(updated.is_public ? "Idea is now public — share link is ready!" : "Idea is now private")
+        } catch (error: any) {
+            toast.error(error.message || "Failed to update visibility")
+        } finally {
+            setIsTogglingVisibility(null)
+        }
+    }
+
+    const handleCopyLink = async (idea: Idea) => {
+        if (!idea.share_token) return
+        const shareUrl = `${window.location.origin}/share/${idea.share_token}`
+        try {
+            await navigator.clipboard.writeText(shareUrl)
+            setCopiedId(idea.id)
+            toast.success("Share link copied to clipboard!")
+            setTimeout(() => setCopiedId(null), 2000)
+        } catch {
+            toast.error("Failed to copy link")
         }
     }
 
@@ -114,6 +148,7 @@ export default function IdeasPage() {
                                             <div className="text-xl font-bold text-primary">{idea.validation_score || 0}%</div>
                                         </div>
 
+                                        {/* Delete button */}
                                         <AlertDialog>
                                             <AlertDialogTrigger asChild>
                                                 <Button
@@ -129,7 +164,7 @@ export default function IdeasPage() {
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>Delete this idea?</AlertDialogTitle>
                                                     <AlertDialogDescription>
-                                                        This action cannot be undone. This will permanently remove "{idea.title}" and all associated analysis data from our servers.
+                                                        This action cannot be undone. This will permanently remove &quot;{idea.title}&quot; and all associated analysis data from our servers.
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
@@ -145,6 +180,7 @@ export default function IdeasPage() {
                                         </AlertDialog>
                                     </div>
                                 </div>
+
                                 <CardTitle className="text-xl text-foreground line-clamp-1 group-hover:text-primary transition-colors text-ellipsis overflow-hidden">
                                     {idea.title}
                                 </CardTitle>
@@ -152,10 +188,55 @@ export default function IdeasPage() {
                                     Created {new Date(idea.created_at).toLocaleDateString()}
                                 </div>
                             </CardHeader>
+
                             <CardContent className="flex flex-col flex-grow">
-                                <p className="text-sm text-muted-foreground line-clamp-3 mb-6 flex-grow">
+                                <p className="text-sm text-muted-foreground line-clamp-3 mb-4 flex-grow">
                                     {idea.description}
                                 </p>
+
+                                {/* Visibility toggle row */}
+                                <div className="flex items-center justify-between mb-4 px-1">
+                                    <button
+                                        onClick={() => handleToggleVisibility(idea)}
+                                        disabled={isTogglingVisibility === idea.id}
+                                        className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all duration-200 select-none
+                                            ${idea.is_public
+                                                ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20 dark:text-emerald-400"
+                                                : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                                            }`}
+                                    >
+                                        {isTogglingVisibility === idea.id ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : idea.is_public ? (
+                                            <Globe className="h-3 w-3" />
+                                        ) : (
+                                            <Lock className="h-3 w-3" />
+                                        )}
+                                        {idea.is_public ? "Public" : "Private"}
+                                    </button>
+
+                                    {/* Copy link button — only shown when public */}
+                                    {idea.is_public && idea.share_token && (
+                                        <button
+                                            onClick={() => handleCopyLink(idea)}
+                                            title="Copy shareable link"
+                                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1.5 rounded-lg hover:bg-primary/5"
+                                        >
+                                            {copiedId === idea.id ? (
+                                                <>
+                                                    <Check className="h-3.5 w-3.5 text-emerald-500" />
+                                                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">Copied!</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Link2 className="h-3.5 w-3.5" />
+                                                    <span>Copy link</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
+
                                 <Button variant="outline" className="w-full rounded-xl gap-2 bg-transparent border-primary/20 text-primary hover:bg-primary/5 h-10" asChild>
                                     <Link href={`/dashboard/idea/${idea.id}/validation`}>
                                         View Analysis <ArrowRight className="h-4 w-4" />

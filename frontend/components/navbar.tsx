@@ -16,6 +16,9 @@ export function Navbar() {
           <span>Inceptrax</span>
         </Link>
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
+          <Link href="/public-ideas" className="text-muted-foreground hover:text-foreground transition-colors">
+            Explore
+          </Link>
           <Link href="/features" className="text-muted-foreground hover:text-foreground transition-colors">
             Features
           </Link>
