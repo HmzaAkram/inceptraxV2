@@ -181,43 +181,7 @@ export default function DashboardPage() {
   </CardContent>
 </Card>
 
-        <Card className="border-none shadow-lg bg-gradient-to-br from-indigo-600 to-indigo-800 text-white rounded-2xl overflow-hidden relative">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <Sparkles className="h-24 w-24" />
-          </div>
-          <CardHeader>
-            <CardTitle className="text-xl font-bold flex items-center gap-2">
-              <Layers className="h-6 w-6" /> AI Layers Engine
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-indigo-100 leading-relaxed">
-              Don't just analyze your idea — <strong>improve it.</strong> Our interactive engine 
-              asks the critical questions that founders often miss.
-            </p>
-            <div className="space-y-2">
-              {[
-                "Deep-dive questioning",
-                "Personalized insights",
-                "High-accuracy analysis"
-              ].map((feature) => (
-                <div key={feature} className="flex items-center gap-2 text-sm text-indigo-100">
-                  <div className="h-1.5 w-1.5 rounded-full bg-indigo-300" />
-                  {feature}
-                </div>
-              ))}
-            </div>
-            <Button
-              asChild
-              variant="secondary"
-              className="w-full h-12 rounded-xl font-bold shadow-xl hover:scale-105 transition-transform bg-white text-indigo-700 hover:bg-slate-100 border-none mt-4"
-            >
-              <Link href="/dashboard/new-idea">
-                Launch Idea Engine <ArrowRight className="h-4 w-4 ml-2" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        
 
       </div>
     </div>
