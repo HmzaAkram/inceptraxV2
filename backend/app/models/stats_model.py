@@ -1,16 +1,28 @@
-from app import db
+from app import get_db
 
-class SystemStats(db.Model):
-    __tablename__ = 'system_stats'
 
-    id = db.Column(db.Integer, primary_key=True)
-    total_visitors = db.Column(db.Integer, default=0)
+class SystemStats:
+    collection_name = 'system_stats'
 
     @classmethod
     def get_stats(cls):
-        stats = cls.query.first()
+        db = get_db()
+        stats = db[cls.collection_name].find_one({"_id": "global"})
         if not stats:
-            stats = cls(total_visitors=0)
-            db.session.add(stats)
-            db.session.commit()
+            stats = {"_id": "global", "total_visitors": 0}
+            db[cls.collection_name].insert_one(stats)
         return stats
+
+    @classmethod
+    def increment_visitors(cls):
+        db = get_db()
+        db[cls.collection_name].update_one(
+            {"_id": "global"},
+            {"$inc": {"total_visitors": 1}},
+            upsert=True
+        )
+
+    @classmethod
+    def get_total_visitors(cls):
+        stats = cls.get_stats()
+        return stats.get("total_visitors", 0)

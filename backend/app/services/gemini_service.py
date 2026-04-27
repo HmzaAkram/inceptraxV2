@@ -8,14 +8,19 @@ from flask import current_app
 
 
 class GeminiService:
-    """Centralized AI service with Gemini primary + Groq fallback."""
+    """Centralized AI service with triple fallback: Gemini → Groq → OpenRouter.
+
+    Model: gemini-2.5-flash (configurable via GEMINI_MODEL env var).
+    The platform NEVER shows quota errors to users — it silently
+    switches providers when one is exhausted.
+    """
 
     @staticmethod
     def get_model(system_instruction=None):
         """Get a configured Gemini model instance."""
         api_key = current_app.config.get('GEMINI_API_KEY')
         if not api_key:
-            raise ValueError("GEMINI_API_KEY is not set")
+            raise ValueError("GEMINI_API_KEY is not set. Add it to your .env file.")
 
         genai.configure(api_key=api_key)
         model_name = current_app.config.get('GEMINI_MODEL', 'gemini-2.5-flash')
@@ -190,13 +195,8 @@ class GeminiService:
             dict with keys: success (bool), data (dict|None), error (str|None), stage (str)
         """
         if not system_instruction:
-            base_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-            prompt_path = os.path.join(base_path, 'prompts', 'system_prompt.txt')
-            try:
-                with open(prompt_path, 'r') as f:
-                    system_instruction = f.read()
-            except FileNotFoundError:
-                system_instruction = "You are Inceptrax AI, a senior startup consultant. Always return valid JSON."
+            from app.services.prompts import SYSTEM_PROMPT
+            system_instruction = SYSTEM_PROMPT
 
         model = GeminiService.get_model(system_instruction=system_instruction)
 

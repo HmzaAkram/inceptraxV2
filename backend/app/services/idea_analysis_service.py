@@ -4,13 +4,10 @@ import time
 from flask import current_app
 from app.services.gemini_service import GeminiService
 from app.services.market_service import MarketService
-from app.models.user_model import Idea, User, StageResult
-from app import db
+from app.models.user_model import Idea, User, StageResult, Notification
 
 
 # ─── Stage Definitions ───────────────────────────────────────────────────────
-# Each stage defines: name, prompt file, stage number, and which previous
-# stages it needs for context. The final_report stage gets ALL previous results.
 
 STAGES = [
     {
@@ -66,7 +63,7 @@ STAGES = [
         "name": "final_report",
         "prompt_file": "final_report_prompt.txt",
         "number": 8,
-        "context_stages": "ALL",  # Gets everything
+        "context_stages": "ALL",
         "research_type": None,
     },
 ]
@@ -75,26 +72,15 @@ STAGES = [
 class IdeaAnalysisService:
     """Handles the 8-stage AI analysis pipeline with context chaining."""
 
-    # ─── Core Pipeline ────────────────────────────────────────────────────────
-
     @staticmethod
     def process_idea_analysis(idea_id):
-        """Run the complete 8-stage analysis pipeline.
-
-        Each stage:
-        1. Builds a prompt with the idea context + previous stage results
-        2. Optionally adds real research data (SerpAPI) for market/competitor stages
-        3. Calls Gemini
-        4. Saves the result as a StageResult record
-        5. Updates the idea's analysis_data with the combined results
-        """
-        idea = Idea.query.get(idea_id)
+        idea = Idea.find_by_id(idea_id)
         if not idea:
             return None
 
         try:
             idea.status = 'processing'
-            db.session.commit()
+            idea.save()
 
             user_idea = idea.get_idea_context()
             results = {}
@@ -104,7 +90,6 @@ class IdeaAnalysisService:
                 stage_name = stage_def["name"]
                 print(f"[Analysis] Stage {stage_def['number']}/8: {stage_name} for idea #{idea_id}")
 
-                # 1. Build context from previous stages
                 if stage_def["context_stages"] == "ALL":
                     previous = results.copy()
                 elif stage_def["context_stages"]:
@@ -112,14 +97,12 @@ class IdeaAnalysisService:
                 else:
                     previous = {}
 
-                # 2. Get research data for grounded stages
                 research_data = None
                 if stage_def["research_type"] == "market":
                     research_data = IdeaAnalysisService._get_market_research(user_idea)
                 elif stage_def["research_type"] == "competitor":
                     research_data = IdeaAnalysisService._get_competitor_research(user_idea)
 
-                # 3. Build the prompt
                 prompt = IdeaAnalysisService._build_stage_prompt(
                     stage_def["prompt_file"],
                     user_idea,
@@ -127,13 +110,11 @@ class IdeaAnalysisService:
                     research_data
                 )
 
-                # 4. Call Gemini
                 result = GeminiService.call_gemini(prompt, stage_name)
 
                 if result["success"] and result["data"]:
                     stage_data = result["data"]
                 else:
-                    # If a stage fails, create a placeholder and continue
                     print(f"[Analysis] Stage {stage_name} failed: {result.get('error', 'Unknown')}")
                     stage_data = {
                         "score": 50,
@@ -142,36 +123,26 @@ class IdeaAnalysisService:
                     }
 
                 results[stage_name] = stage_data
-
-                # 5. Save individual stage result to DB
                 IdeaAnalysisService._save_stage_result(idea_id, stage_def["number"], stage_name, stage_data)
-
-                # 6. Build combined analysis data progressively
                 all_analysis[stage_name] = stage_data
 
-                # 7. Throttle between stages to avoid per-minute rate limits
-                # 15s gap keeps us under Groq's 12K TPM free-tier limit
                 if stage_def["number"] < 8:
                     time.sleep(15)
 
-            # ─── Compile final analysis_data ──────────────────────────────────
             compiled = IdeaAnalysisService._compile_analysis_data(results, user_idea)
             idea.analysis_data = compiled
             idea.status = 'completed'
 
-            # Set overall score from final report
             final = results.get("final_report", {})
             idea.overall_score = final.get("overall_score", compiled.get("overall_score", 50))
             idea.risk_level = final.get("risk_level", "Medium")
 
-            # Increment credits
-            user = User.query.get(idea.user_id)
+            user = User.find_by_id(idea.user_id)
             if user:
                 user.api_credits_used += 1
+                user.save()
 
-            # Create notification
             try:
-                from app.models.user_model import Notification
                 notif = Notification(
                     user_id=idea.user_id,
                     title="Analysis Complete!",
@@ -179,11 +150,11 @@ class IdeaAnalysisService:
                     type="success",
                     link=f"/dashboard/idea/{idea.id}/validation",
                 )
-                db.session.add(notif)
+                notif.save()
             except Exception as ne:
                 print(f"[Notification] Failed to create: {ne}")
 
-            db.session.commit()
+            idea.save()
             print(f"[Analysis] Complete for idea #{idea_id}. Score: {idea.overall_score}")
             return compiled
 
@@ -194,7 +165,7 @@ class IdeaAnalysisService:
 
             idea.status = 'failed'
             idea.analysis_data = IdeaAnalysisService._build_fallback_data(str(e))
-            db.session.commit()
+            idea.save()
 
             return idea.analysis_data
 
@@ -202,18 +173,12 @@ class IdeaAnalysisService:
 
     @staticmethod
     def _build_stage_prompt(prompt_file, user_idea, previous_results=None, research_data=None):
-        """Build a complete prompt for a stage with idea context, previous results, and research.
+        from app.services.prompts import PROMPTS
 
-        CRITICAL: Every prompt gets the full idea context injected. This is the fix
-        for the V1 bug where AI outputs were generic because the idea wasn't in the prompt.
-        """
-        base_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        prompt_path = os.path.join(base_path, 'prompts', prompt_file)
+        template = PROMPTS.get(prompt_file)
+        if not template:
+            raise ValueError(f"Unknown prompt template: {prompt_file}")
 
-        with open(prompt_path, 'r') as f:
-            template = f.read()
-
-        # Build previous context string
         previous_context = ""
         if previous_results:
             previous_context = (
@@ -222,7 +187,6 @@ class IdeaAnalysisService:
                 + "\n=== END PREVIOUS RESULTS ===\n"
             )
 
-        # Build research data string
         research_str = ""
         if research_data:
             research_str = (
@@ -231,7 +195,6 @@ class IdeaAnalysisService:
                 + "\n=== END RESEARCH DATA ===\n"
             )
 
-        # Format the template with idea context
         prompt = template.format(
             title=user_idea.get("title", ""),
             description=user_idea.get("description", ""),
@@ -251,7 +214,6 @@ class IdeaAnalysisService:
 
     @staticmethod
     def _get_market_research(user_idea):
-        """Run targeted searches for market data using Tavily → SerpAPI chain."""
         try:
             industry = user_idea.get("industry", "")
             title = user_idea.get("title", "")
@@ -265,7 +227,6 @@ class IdeaAnalysisService:
             results = []
             for query in queries:
                 search_result = MarketService.search(query, max_results=3)
-                # Include AI answer summary if Tavily provided one
                 answer = search_result.get("answer", "")
                 for r in search_result.get("results", []):
                     results.append({
@@ -284,7 +245,6 @@ class IdeaAnalysisService:
 
     @staticmethod
     def _get_competitor_research(user_idea):
-        """Run targeted searches for competitors + deep-scrape top result with Firecrawl."""
         try:
             industry = user_idea.get("industry", "")
             title = user_idea.get("title", "")
@@ -308,19 +268,17 @@ class IdeaAnalysisService:
                         "snippet": r.get("snippet", ""),
                         "source": r.get("source", ""),
                     })
-                    # Collect URLs for potential Firecrawl deep scraping
                     url = r.get("link", "")
                     if url and len(competitor_urls) < 2:
                         competitor_urls.append(url)
 
-            # Deep-scrape top 2 competitor URLs with Firecrawl for detailed intelligence
             scraped_content = []
             for url in competitor_urls[:2]:
                 content = MarketService.scrape_url(url)
                 if content:
                     scraped_content.append({
                         "url": url,
-                        "content": content[:2000],  # Limit to avoid prompt bloat
+                        "content": content[:2000],
                     })
 
             if scraped_content:
@@ -341,17 +299,14 @@ class IdeaAnalysisService:
 
     @staticmethod
     def _save_stage_result(idea_id, stage_number, stage_name, data):
-        """Save an individual stage result to the stage_results table."""
         try:
-            # Check if a result already exists for this stage (for re-analysis)
-            existing = StageResult.query.filter_by(
-                idea_id=idea_id, stage_name=stage_name
-            ).first()
+            existing = StageResult.find_by_idea_and_stage(idea_id, stage_name)
 
             if existing:
                 existing.result_json = data
                 existing.score = data.get("score")
-                existing.version += 1
+                existing.version = (existing.version or 1) + 1
+                existing.save()
             else:
                 stage_result = StageResult(
                     idea_id=idea_id,
@@ -361,9 +316,7 @@ class IdeaAnalysisService:
                     score=data.get("score"),
                     version=1,
                 )
-                db.session.add(stage_result)
-
-            db.session.commit()
+                stage_result.save()
         except Exception as e:
             print(f"[Analysis] Failed to save stage result {stage_name}: {e}")
 
@@ -371,11 +324,6 @@ class IdeaAnalysisService:
 
     @staticmethod
     def _compile_analysis_data(results, user_idea):
-        """Compile all stage results into the unified analysis_data JSON stored on the Idea.
-
-        This maintains backward compatibility with the V1 analysis_data format
-        that the frontend already reads from, while adding the new V2 fields.
-        """
         validation = results.get("validation", {})
         market = results.get("market_research", {})
         audience = results.get("target_audience", {})
@@ -385,7 +333,6 @@ class IdeaAnalysisService:
         gtm = results.get("gtm_strategy", {})
         final = results.get("final_report", {})
 
-        # Calculate overall score from individual stage scores
         stage_scores = []
         for stage_data in results.values():
             if isinstance(stage_data, dict) and "score" in stage_data:
@@ -399,7 +346,6 @@ class IdeaAnalysisService:
             overall_score = round(sum(stage_scores) / len(stage_scores))
 
         compiled = {
-            # V1-compatible fields
             "overall_score": overall_score or 50,
             "scores": validation.get("scores", {
                 "market_demand": {"label": "N/A", "value": 50},
@@ -409,8 +355,6 @@ class IdeaAnalysisService:
             "strengths": final.get("top_strengths", validation.get("strengths", [])),
             "risks": final.get("top_risks", validation.get("risks", [])),
             "recommendation": final.get("executive_summary", validation.get("recommendation", "")),
-
-            # Market research
             "market_research": {
                 "tam": market.get("tam", "N/A"),
                 "sam": market.get("sam", "N/A"),
@@ -420,21 +364,15 @@ class IdeaAnalysisService:
                 "segments": market.get("segments", []),
                 "score": market.get("score"),
             },
-
-            # Competitors
             "competitors": competitors.get("top_competitors", []),
             "market_gaps": competitors.get("market_gaps", []),
             "competitive_advantage": competitors.get("competitive_advantage", ""),
-
-            # Target audience
             "target_audience": {
                 "primary_persona": audience.get("primary_persona", {}),
                 "secondary_personas": audience.get("secondary_personas", []),
                 "audience_size": audience.get("audience_size_estimate", ""),
                 "score": audience.get("score"),
             },
-
-            # Monetization
             "monetization": {
                 "pricing_model": monetization.get("pricing_model", "N/A"),
                 "recommended_strategy": monetization.get("recommended_strategy", ""),
@@ -444,14 +382,10 @@ class IdeaAnalysisService:
                 "unit_economics": monetization.get("unit_economics", {}),
                 "score": monetization.get("score"),
             },
-
-            # MVP Blueprint
             "mvp_blueprint": mvp.get("phases", []),
             "mvp_tech_stack": mvp.get("tech_stack", {}),
             "mvp_timeline": mvp.get("estimated_timeline", ""),
             "mvp_cost": mvp.get("estimated_cost", ""),
-
-            # GTM Strategy
             "gtm_strategy": {
                 "launch_plan": gtm.get("launch_plan", ""),
                 "acquisition_channels": gtm.get("acquisition_channels", []),
@@ -460,8 +394,6 @@ class IdeaAnalysisService:
                 "early_traction": gtm.get("early_traction", ""),
                 "score": gtm.get("score"),
             },
-
-            # Final report
             "final_report": {
                 "overall_score": final.get("overall_score", overall_score),
                 "verdict": final.get("verdict", ""),
@@ -472,8 +404,6 @@ class IdeaAnalysisService:
                 "ninety_day_plan": final.get("ninety_day_plan", {}),
                 "key_metrics": final.get("key_metrics_to_track", []),
             },
-
-            # V2 metadata
             "stage_results": {
                 name: {"score": data.get("score"), "has_data": True}
                 for name, data in results.items()
@@ -485,7 +415,6 @@ class IdeaAnalysisService:
 
     @staticmethod
     def _build_fallback_data(error_msg):
-        """Build fallback analysis data when the entire pipeline fails."""
         return {
             "overall_score": 0,
             "scores": {
@@ -508,7 +437,6 @@ class IdeaAnalysisService:
 
     @staticmethod
     def create_idea(user_id, data):
-        """Create a new Idea record from form data."""
         idea = Idea(
             user_id=user_id,
             title=data.get('title', ''),
@@ -522,42 +450,42 @@ class IdeaAnalysisService:
             target_audience=data.get('target_audience', data.get('audience', '')),
             stage=data.get('stage', 'idea'),
         )
-        db.session.add(idea)
-        db.session.commit()
+        idea.save()
         return idea
 
     @staticmethod
     def delete_idea(idea_id, user_id):
-        """Delete an idea and associated files."""
-        idea = Idea.query.filter_by(id=idea_id, user_id=user_id).first()
-        if not idea:
+        idea = Idea.find_by_id(idea_id)
+        if not idea or idea.user_id != user_id:
             return False
 
-        # Remove associated PDF if exists
-        reports_dir = os.path.join(current_app.root_path, '..', 'instance', 'reports')
-        filename = f"{idea.title.replace(' ', '_')}_{idea.id}_Analysis.pdf"
-        file_path = os.path.join(reports_dir, filename)
+        # Clean up related data
+        from app import get_db
+        db = get_db()
+        db.stage_results.delete_many({"idea_id": idea_id})
+        db.ai_layers_sessions.delete_many({"idea_id": idea_id})
+        db.checklist_items.delete_many({"idea_id": idea_id})
+        db.research_notes.delete_many({"idea_id": idea_id})
+        db.comments.delete_many({"idea_id": idea_id})
+        db.reports.delete_many({"idea_id": idea_id})
 
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except Exception as e:
-                print(f"Error deleting PDF file: {e}")
+        # Delete competitor watch and alerts
+        watch = db.competitor_watch.find_one({"idea_id": idea_id})
+        if watch:
+            db.competitor_alerts.delete_many({"watch_id": watch.get("id")})
+            db.competitor_watch.delete_one({"idea_id": idea_id})
 
-        db.session.delete(idea)
-        db.session.commit()
+        idea.delete()
         return True
 
     # ─── Investor Pitches ─────────────────────────────────────────────────────
 
     @staticmethod
     def generate_investor_pitches(idea_id):
-        """Generate 3 investor pitches in specific formats: Classic, Problem-First, Traction-First."""
-        idea = Idea.query.get(idea_id)
+        idea = Idea.find_by_id(idea_id)
         if not idea:
             return {"error": "Idea not found"}
 
-        # Return cached if available
         if idea.analysis_data and "investor_pitches" in idea.analysis_data:
             return idea.analysis_data["investor_pitches"]
 
@@ -626,13 +554,12 @@ Return JSON:
             if result["success"]:
                 pitches_data = result["data"].get("pitches", [])
 
-                # Cache in analysis_data
                 if not idea.analysis_data:
                     idea.analysis_data = {}
                 new_data = dict(idea.analysis_data)
                 new_data["investor_pitches"] = pitches_data
                 idea.analysis_data = new_data
-                db.session.commit()
+                idea.save()
 
                 return pitches_data
             else:
@@ -646,12 +573,10 @@ Return JSON:
 
     @staticmethod
     def generate_research_hub(idea_id):
-        """Generate a comprehensive Research & Execution Hub for an idea."""
-        idea = Idea.query.get(idea_id)
+        idea = Idea.find_by_id(idea_id)
         if not idea:
             return {"error": "Idea not found"}
 
-        # Return cached if available
         if idea.analysis_data and "research_hub" in idea.analysis_data:
             return idea.analysis_data["research_hub"]
 
@@ -743,7 +668,7 @@ Rules:
                 new_data = dict(idea.analysis_data)
                 new_data["research_hub"] = hub_data
                 idea.analysis_data = new_data
-                db.session.commit()
+                idea.save()
 
                 return hub_data
             else:

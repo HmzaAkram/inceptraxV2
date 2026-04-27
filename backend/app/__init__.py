@@ -1,12 +1,20 @@
 from flask import Flask, jsonify
-from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from pymongo import MongoClient
 from app.config import Config
 import os
 
-db = SQLAlchemy()
+# ─── MongoDB globals ──────────────────────────────────────────────────────────
+mongo_client = None
+mongo_db = None
+
+
+def get_db():
+    """Return the MongoDB database instance."""
+    return mongo_db
+
 
 # Initialize Flask-Limiter globally
 limiter = Limiter(
@@ -17,6 +25,8 @@ limiter = Limiter(
 
 
 def create_app():
+    global mongo_client, mongo_db
+
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(Config)
 
@@ -29,8 +39,18 @@ def create_app():
         "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     }})
 
+    # ─── MongoDB ──────────────────────────────────────────────────────────
+    mongo_uri = app.config.get('MONGODB_URI', 'mongodb://localhost:27017/inceptrax')
+    mongo_client = MongoClient(mongo_uri)
+    # Extract DB name from URI or default to 'inceptrax'
+    db_name = mongo_uri.rsplit('/', 1)[-1].split('?')[0] if '/' in mongo_uri else 'inceptrax'
+    mongo_db = mongo_client[db_name]
+    print(f"[MongoDB] Connected to database: {db_name}")
+
+    # Create indexes for performance
+    _ensure_indexes(mongo_db)
+
     # ─── Extensions ───────────────────────────────────────────────────────
-    db.init_app(app)
     limiter.init_app(app)
 
     # ─── Blueprints ───────────────────────────────────────────────────────
@@ -94,3 +114,32 @@ def create_app():
         print(f"[Scheduler] Failed to start: {e}")
 
     return app
+
+
+def _ensure_indexes(db):
+    """Create MongoDB indexes for query performance."""
+    try:
+        db.users.create_index("email", unique=True)
+        db.users.create_index("id", unique=True)
+        db.ideas.create_index("id", unique=True)
+        db.ideas.create_index("user_id")
+        db.ideas.create_index("share_token")
+        db.ideas.create_index("is_public")
+        db.stage_results.create_index([("idea_id", 1), ("stage_name", 1)])
+        db.stage_results.create_index("id", unique=True)
+        db.token_blacklist.create_index("token", unique=True)
+        db.notifications.create_index("user_id")
+        db.notifications.create_index("id", unique=True)
+        db.messages.create_index("sender_id")
+        db.messages.create_index("receiver_id")
+        db.messages.create_index("id", unique=True)
+        db.comments.create_index("idea_id")
+        db.comments.create_index("id", unique=True)
+        db.competitor_watch.create_index("idea_id")
+        db.competitor_watch.create_index("id", unique=True)
+        db.competitor_alerts.create_index("watch_id")
+        db.competitor_alerts.create_index("id", unique=True)
+        db.counters.create_index("_id")
+        print("[MongoDB] Indexes created successfully.")
+    except Exception as e:
+        print(f"[MongoDB] Index creation warning: {e}")

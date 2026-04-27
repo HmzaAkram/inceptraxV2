@@ -1,10 +1,10 @@
-from flask import Blueprint, jsonify, request, send_file, current_app
+from flask import Blueprint, jsonify, request, current_app
 import os
-import shutil
-from app.models.user_model import User
+import json
+from app.models.user_model import User, Idea
 from app.models.stats_model import SystemStats
 from app.middleware.auth_middleware import token_required, admin_required
-from app import db
+from app import get_db
 from datetime import datetime, timedelta
 
 admin_bp = Blueprint('admin', __name__)
@@ -13,24 +13,27 @@ admin_bp = Blueprint('admin', __name__)
 @token_required
 @admin_required
 def get_admin_stats(current_user):
-    total_users = User.query.count()
-    total_ideas = db.session.query(db.func.count(User.id)).join(User.ideas).scalar() or 0
+    db = get_db()
+    total_users = db.users.count_documents({})
+    total_ideas = db.ideas.count_documents({})
     
     # Signups today
-    today = datetime.utcnow().date()
-    signups_today = User.query.filter(db.func.date(User.created_at) == today).count()
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    signups_today = db.users.count_documents({"created_at": {"$gte": today}})
     
     # Visitors
-    stats = SystemStats.get_stats()
+    total_visitors = SystemStats.get_total_visitors()
     
     # Total API Credits used across all users
-    total_api_used = db.session.query(db.func.sum(User.api_credits_used)).scalar() or 0
+    pipeline = [{"$group": {"_id": None, "total": {"$sum": "$api_credits_used"}}}]
+    result = list(db.users.aggregate(pipeline))
+    total_api_used = result[0]["total"] if result else 0
 
     return jsonify({
         "total_users": total_users,
         "total_ideas": total_ideas,
         "signups_today": signups_today,
-        "total_visitors": stats.total_visitors,
+        "total_visitors": total_visitors,
         "api_usage": {
             "used": total_api_used,
             "remaining": "unlimited",
@@ -42,16 +45,14 @@ def get_admin_stats(current_user):
 @token_required
 @admin_required
 def get_all_users(current_user):
-    users = User.query.order_by(User.created_at.desc()).all()
+    users = User.find_all(sort_by="created_at", descending=True)
     users_list = [user.to_dict() for user in users]
     return jsonify({"users": users_list}), 200
 
 @admin_bp.route('/track-visit', methods=['POST'])
 def track_visit():
-    # Public route to increment visitor counter
-    stats = SystemStats.get_stats()
-    stats.total_visitors += 1
-    db.session.commit()
+    """Public route to increment visitor counter."""
+    SystemStats.increment_visitors()
     return jsonify({"message": "Visit tracked"}), 200
 
 @admin_bp.route('/users/<int:user_id>/role', methods=['PATCH'])
@@ -62,16 +63,16 @@ def update_user_role(current_user, user_id):
     if not data or 'is_admin' not in data:
         return jsonify({"error": "Missing 'is_admin' field"}), 400
     
-    user = User.query.get(user_id)
+    user = User.find_by_id(user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
     
-    # Optional: Prevent self-demotion if the admin email matches the hardcoded one
+    # Prevent self-demotion of main admin
     if user.email == "hmzaakram295@gmail.com" and not data['is_admin']:
         return jsonify({"error": "Main admin account cannot be demoted"}), 403
     
     user.is_admin = data['is_admin']
-    db.session.commit()
+    user.save()
     
     return jsonify({
         "message": f"User role updated to {'Admin' if user.is_admin else 'User'}",
@@ -82,27 +83,41 @@ def update_user_role(current_user, user_id):
 @token_required
 @admin_required
 def backup_database(current_user):
-    db_path = os.path.join(current_app.instance_path, 'inceptrax.db')
-    if not os.path.exists(db_path):
-        db_path = os.path.join(current_app.root_path, '..', 'inceptrax.db')
-        
-    if not os.path.exists(db_path):
-        return jsonify({"error": "Database file not found"}), 404
-        
-    date_str = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-    filename = f"inceptrax_backup_{date_str}.db"
+    """Export a JSON backup of the entire MongoDB database."""
+    db = get_db()
     
+    backup_data = {}
+    for collection_name in db.list_collection_names():
+        docs = list(db[collection_name].find())
+        # Convert ObjectId to string for JSON serialization
+        for doc in docs:
+            doc['_id'] = str(doc['_id'])
+            for key, val in doc.items():
+                if isinstance(val, datetime):
+                    doc[key] = val.isoformat()
+        backup_data[collection_name] = docs
+    
+    date_str = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    
+    # Write to temp file
+    import tempfile
+    backup_path = os.path.join(tempfile.gettempdir(), f"inceptrax_backup_{date_str}.json")
+    with open(backup_path, 'w') as f:
+        json.dump(backup_data, f, indent=2, default=str)
+    
+    from flask import send_file
     return send_file(
-        db_path,
+        backup_path,
         as_attachment=True,
-        download_name=filename,
-        mimetype='application/x-sqlite3'
+        download_name=f"inceptrax_backup_{date_str}.json",
+        mimetype='application/json'
     )
 
 @admin_bp.route('/restore', methods=['POST'])
 @token_required
 @admin_required
 def restore_database(current_user):
+    """Restore database from a JSON backup file."""
     if 'file' not in request.files:
         return jsonify({"error": "No file parameter provided"}), 400
         
@@ -110,21 +125,24 @@ def restore_database(current_user):
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
         
-    if not file.filename.endswith('.db'):
-        return jsonify({"error": "Only .db files are accepted"}), 400
-        
-    db_path = os.path.join(current_app.instance_path, 'inceptrax.db')
-    if not os.path.exists(db_path):
-        db_path = os.path.join(current_app.root_path, '..', 'inceptrax.db')
+    if not file.filename.endswith('.json'):
+        return jsonify({"error": "Only .json backup files are accepted"}), 400
         
     try:
-        temp_path = db_path + '.temp'
-        file.save(temp_path)
+        backup_data = json.loads(file.read())
+        db = get_db()
         
-        db.engine.dispose()
+        for collection_name, docs in backup_data.items():
+            if collection_name.startswith('system.'):
+                continue
+            db[collection_name].drop()
+            if docs:
+                # Remove string _id, let MongoDB assign new ones
+                for doc in docs:
+                    if '_id' in doc:
+                        del doc['_id']
+                db[collection_name].insert_many(docs)
         
-        shutil.move(temp_path, db_path)
-        
-        return jsonify({"message": "Database restored successfully"}), 200
+        return jsonify({"message": "Database restored successfully from JSON backup"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

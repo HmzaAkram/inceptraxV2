@@ -3,23 +3,14 @@ import datetime
 import os
 from flask import current_app
 from app.models.user_model import User, TokenBlacklist
-from app import db
+from app import get_db
 
 
 class AuthService:
-    """JWT authentication service with bcrypt password hashing and token blacklisting.
-
-    V2 Changes:
-    - Dual hash support: bcrypt primary, werkzeug fallback with auto-rehash
-    - Access token (7 days) + refresh token (30 days)
-    - Token blacklisting for proper logout
-    - Generic error messages (never reveal which field is wrong)
-    - Password validation rules
-    """
+    """JWT authentication service with bcrypt password hashing and token blacklisting."""
 
     @staticmethod
     def generate_tokens(user_id):
-        """Generate both access and refresh JWT tokens."""
         secret = current_app.config.get('JWT_SECRET_KEY', current_app.config.get('SECRET_KEY'))
 
         access_token = jwt.encode({
@@ -40,16 +31,13 @@ class AuthService:
 
     @staticmethod
     def generate_token(user_id):
-        """Legacy single-token generation for backward compatibility."""
         access, _ = AuthService.generate_tokens(user_id)
         return access
 
     @staticmethod
     def decode_token(token):
-        """Decode and validate a JWT token. Returns user_id or error string."""
         try:
-            # Check if token is blacklisted
-            if TokenBlacklist.query.filter_by(token=token).first():
+            if TokenBlacklist.find_by_token(token):
                 return 'Token has been revoked'
 
             secret = current_app.config.get('JWT_SECRET_KEY', current_app.config.get('SECRET_KEY'))
@@ -62,9 +50,8 @@ class AuthService:
 
     @staticmethod
     def decode_refresh_token(token):
-        """Decode a refresh token specifically."""
         try:
-            if TokenBlacklist.query.filter_by(token=token).first():
+            if TokenBlacklist.find_by_token(token):
                 return None, 'Token has been revoked'
 
             secret = current_app.config.get('JWT_SECRET_KEY', current_app.config.get('SECRET_KEY'))
@@ -81,13 +68,10 @@ class AuthService:
 
     @staticmethod
     def blacklist_token(token):
-        """Add a token to the blacklist (for logout)."""
         try:
-            existing = TokenBlacklist.query.filter_by(token=token).first()
-            if not existing:
+            if not TokenBlacklist.find_by_token(token):
                 bl = TokenBlacklist(token=token)
-                db.session.add(bl)
-                db.session.commit()
+                bl.save()
             return True
         except Exception as e:
             print(f"Error blacklisting token: {e}")
@@ -95,10 +79,6 @@ class AuthService:
 
     @staticmethod
     def validate_password(password):
-        """Validate password meets security requirements.
-        - Minimum 8 characters
-        - At least 1 uppercase, 1 lowercase, 1 number
-        """
         if not password or len(password) < 8:
             return False, "Password must be at least 8 characters"
         if not any(c.isupper() for c in password):
@@ -111,13 +91,11 @@ class AuthService:
 
     @staticmethod
     def register_user(data):
-        """Register a new user with validation."""
         email = (data.get('email') or '').strip().lower()
         first_name = (data.get('first_name') or '').strip()
         last_name = (data.get('last_name') or '').strip()
         password = data.get('password', '')
 
-        # Validate required fields
         if not email:
             return {'error': 'Email is required'}, 400
         if not first_name:
@@ -125,13 +103,11 @@ class AuthService:
         if not last_name:
             return {'error': 'Last name is required'}, 400
 
-        # Validate password
         valid, error = AuthService.validate_password(password)
         if not valid:
             return {'error': error}, 400
 
-        # Check existing user (return 409 Conflict)
-        if User.query.filter_by(email=email).first():
+        if User.find_by_email(email):
             return {'error': 'An account with this email already exists'}, 409
 
         user = User(
@@ -140,9 +116,7 @@ class AuthService:
             email=email
         )
         user.set_password(password)
-
-        db.session.add(user)
-        db.session.commit()
+        user.save()
 
         access_token, refresh_token = AuthService.generate_tokens(user.id)
         return {
@@ -154,21 +128,15 @@ class AuthService:
 
     @staticmethod
     def login_user(data):
-        """Login with generic error message — never reveal which field is wrong."""
         email = (data.get('email') or '').strip().lower()
         password = data.get('password', '')
 
-        user = User.query.filter_by(email=email).first()
+        user = User.find_by_email(email)
 
-        # Generic error message for both "email not found" and "wrong password"
         if not user or not user.check_password(password):
             return {'error': 'Invalid credentials'}, 401
 
-        # Update last login
-        user.last_login = datetime.datetime.utcnow() if hasattr(user, 'last_login') else None
-
         access_token, refresh_token = AuthService.generate_tokens(user.id)
-        db.session.commit()
 
         return {
             'message': 'Login successful',
@@ -179,12 +147,11 @@ class AuthService:
 
     @staticmethod
     def refresh_access_token(refresh_token):
-        """Generate a new access token from a valid refresh token."""
         user_id, error = AuthService.decode_refresh_token(refresh_token)
         if error:
             return {'error': error}, 401
 
-        user = User.query.get(user_id)
+        user = User.find_by_id(user_id)
         if not user:
             return {'error': 'User not found'}, 401
 

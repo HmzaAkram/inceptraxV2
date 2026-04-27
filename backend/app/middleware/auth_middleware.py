@@ -5,10 +5,7 @@ from app.models.user_model import User
 
 
 def token_required(f):
-    """Decorator to protect routes with JWT authentication.
-
-    V2: Now checks token blacklist via AuthService.decode_token()
-    """
+    """Decorator to protect routes with JWT authentication."""
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
@@ -28,10 +25,9 @@ def token_required(f):
         user_id = AuthService.decode_token(token)
 
         if isinstance(user_id, str):
-            # decode_token returns a string error message
             return jsonify({'error': user_id}), 401
 
-        user = User.query.get(user_id)
+        user = User.find_by_id(user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 401
 

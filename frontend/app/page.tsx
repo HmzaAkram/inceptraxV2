@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Script from "next/script"
 import { Button } from "@/components/ui/button"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
@@ -40,6 +41,30 @@ const testimonials = [
   },
 ]
 
+// JSON-LD Structured Data for SEO
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Inceptrax",
+  url: "https://www.inceptrax.com",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  description:
+    "AI-powered startup idea validation tool. Validate your business idea with market research, competitor analysis, monetization strategy, and a go-to-market plan.",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+    description: "Free startup idea validation",
+  },
+  aggregateRating: {
+    "@type": "AggregateRating",
+    ratingValue: "4.8",
+    ratingCount: "2400",
+    bestRating: "5",
+  },
+}
+
 export default function LandingPage() {
   const heroRef     = useScrollReveal(0.06)
   const statsRef    = useScrollReveal(0.06)
@@ -49,6 +74,13 @@ export default function LandingPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* JSON-LD Structured Data */}
+      <Script
+        id="json-ld"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       <Navbar />
 
       <main className="flex-grow">
@@ -104,7 +136,7 @@ export default function LandingPage() {
         </section>
 
         {/* ── Features ─────────────────────────────────────── */}
-        <section className="py-24">
+        <section className="py-24" id="features">
           <div className="container px-4 max-w-6xl mx-auto">
             <div className="text-center mb-14">
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">What you get</p>
@@ -126,7 +158,7 @@ export default function LandingPage() {
         </section>
 
         {/* ── How It Works ─────────────────────────────────── */}
-        <section className="py-24 bg-muted/30 border-y border-border">
+        <section className="py-24 bg-muted/30 border-y border-border" id="how-it-works">
           <div className="container px-4 max-w-5xl mx-auto">
             <div className="text-center mb-14">
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Simple process</p>

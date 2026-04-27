@@ -9,13 +9,12 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY')
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', os.getenv('SECRET_KEY'))
 
-    # Database
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///inceptrax.db')
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # MongoDB
+    MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/inceptrax')
 
     # AI / APIs — no hardcoded fallbacks
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-    GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
+    GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
     SERPAPI_KEY = os.getenv('SERPAPI_KEY')
 
     # Email

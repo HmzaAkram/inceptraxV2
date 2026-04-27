@@ -5,12 +5,12 @@ from app.services.pdf_service import PDFService, generate_analysis_pdf
 from app.services.ppt_service import PPTService, generate_investor_ppt
 from app.services.market_service import MarketService
 from app.services.competitor_monitoring_service import CompetitorMonitoringService
-from app.models.user_model import Idea, Comment
+from app.models.user_model import Idea, Comment, StageResult
 from app.models.competitor_model import CompetitorWatch, CompetitorAlert
 from app.middleware.auth_middleware import token_required
 from app.utils.response_formatter import ResponseFormatter
 from app.utils.sanitize import sanitize_idea_data, sanitize_input
-from app import db, limiter
+from app import limiter
 import os
 import json
 import secrets
@@ -24,14 +24,8 @@ def create_idea(current_user):
     if not data:
         return ResponseFormatter.error("Missing request data")
     
-    # Sanitize all user inputs before DB insert
     clean_data = sanitize_idea_data(data)
     idea = IdeaAnalysisService.create_idea(current_user.id, clean_data)
-    
-    # Trigger analysis (This could be asynchronous in production, but here we do it synchronously or simulate it)
-    # The requirement says "no dummy responses", so we perform real analysis.
-    # For better UX, we could return the idea ID and have the frontend poll, 
-    # but the frontend redirect logic suggests it expects the idea to exist.
     
     analysis_results = IdeaAnalysisService.process_idea_analysis(idea.id)
     
@@ -44,7 +38,7 @@ def create_idea(current_user):
 @idea_bp.route('/', methods=['GET'])
 @token_required
 def get_user_ideas(current_user):
-    ideas = Idea.query.filter_by(user_id=current_user.id).all()
+    ideas = Idea.find_by_user(current_user.id)
     return ResponseFormatter.success(
         data={'ideas': [idea.to_dict() for idea in ideas]}
     )
@@ -52,7 +46,7 @@ def get_user_ideas(current_user):
 @idea_bp.route('/<int:idea_id>', methods=['GET'])
 @token_required
 def get_idea(current_user, idea_id):
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
     
@@ -63,7 +57,7 @@ def get_idea(current_user, idea_id):
 @token_required
 def toggle_visibility(current_user, idea_id):
     """Toggle public/private visibility and generate share token if needed."""
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
 
@@ -71,14 +65,10 @@ def toggle_visibility(current_user, idea_id):
     is_public = data.get('is_public', not idea.is_public)
     idea.is_public = is_public
 
-    if is_public:
-        # Always generate a new token when making public
-        idea.share_token = secrets.token_urlsafe(32)
-    else:
-        # Invalidate old token when going private — old links stop working
-        idea.share_token = secrets.token_urlsafe(32)
+    # Always generate a new token
+    idea.share_token = secrets.token_urlsafe(32)
+    idea.save()
 
-    db.session.commit()
     return ResponseFormatter.success(data={'idea': idea.to_dict()})
 
 
@@ -90,24 +80,12 @@ def get_public_ideas():
     industry = request.args.get('industry', '')
     sort = request.args.get('sort', 'newest')
 
-    query = Idea.query.filter_by(is_public=True)
-
-    if industry:
-        query = query.filter(Idea.industry.ilike(f"%{industry}%"))
-
-    if sort == 'score':
-        query = query.order_by(Idea.overall_score.desc().nullslast())
-    elif sort == 'most_viewed':
-        query = query.order_by(Idea.public_views.desc().nullslast())
-    else:
-        query = query.order_by(Idea.created_at.desc())
-
-    paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+    items, total, pages = Idea.find_public(page=page, per_page=per_page, industry=industry, sort=sort)
 
     from app.models.user_model import User
     ideas_data = []
-    for idea in paginated.items:
-        user = User.query.get(idea.user_id)
+    for idea in items:
+        user = User.find_by_id(idea.user_id)
         ideas_data.append({
             "id": idea.id,
             "title": idea.title,
@@ -116,7 +94,7 @@ def get_public_ideas():
             "overall_score": idea.overall_score,
             "share_token": idea.share_token,
             "public_views": idea.public_views or 0,
-            "created_at": idea.created_at.isoformat(),
+            "created_at": idea.created_at.isoformat() if hasattr(idea.created_at, 'isoformat') else str(idea.created_at),
             "founder_id": idea.user_id,
             "founder_name": f"{user.first_name}" if user else "Anonymous",
             "founder_initial": user.first_name[0].upper() if user and user.first_name else "A",
@@ -124,15 +102,15 @@ def get_public_ideas():
 
     return ResponseFormatter.success(data={
         "ideas": ideas_data,
-        "total": paginated.total,
-        "pages": paginated.pages,
+        "total": total,
+        "pages": pages,
         "current_page": page,
     })
 
 @idea_bp.route('/<int:idea_id>/download', methods=['GET'])
 @token_required
 def download_report(current_user, idea_id):
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
         
@@ -149,7 +127,7 @@ def download_report(current_user, idea_id):
 @idea_bp.route('/<int:idea_id>/download-ppt', methods=['GET'])
 @token_required
 def download_ppt(current_user, idea_id):
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
         
@@ -167,11 +145,12 @@ def download_ppt(current_user, idea_id):
 
 
 def _build_idea_export_data(idea):
-    """Build full analysis_data dict from idea ORM object for export services."""
+    """Build full analysis_data dict from idea object for export services."""
+    stage_results = StageResult.find_by_idea(idea.id)
     stages = {}
-    for sr in (idea.stage_results or []):
+    for sr in stage_results:
         try:
-            stages[sr.stage_name] = json.loads(sr.result_json or "{}")
+            stages[sr.stage_name] = sr.result_json if isinstance(sr.result_json, dict) else json.loads(sr.result_json or "{}")
         except Exception:
             stages[sr.stage_name] = {}
 
@@ -190,7 +169,7 @@ def _build_idea_export_data(idea):
 @token_required
 def export_ppt(current_user, idea_id):
     """Export themed PPT. Body: { "theme": "dark_executive"|"clean_light"|"gradient_bold" }"""
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
 
@@ -220,7 +199,7 @@ def export_ppt(current_user, idea_id):
 @token_required
 def export_pdf(current_user, idea_id):
     """Export branded PDF analysis report."""
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
 
@@ -242,7 +221,7 @@ def export_pdf(current_user, idea_id):
 @idea_bp.route('/<int:idea_id>/investor-pitch', methods=['POST'])
 @token_required
 def generate_investor_pitches(current_user, idea_id):
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
         
@@ -260,7 +239,7 @@ def generate_investor_pitches(current_user, idea_id):
 @idea_bp.route('/<int:idea_id>/research-hub', methods=['POST'])
 @token_required
 def generate_research_hub(current_user, idea_id):
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
 
@@ -272,7 +251,7 @@ def generate_research_hub(current_user, idea_id):
     # Only charge a credit if it was freshly generated (not cached)
     if not (idea.analysis_data and "research_hub" in (idea.analysis_data or {})):
         current_user.api_credits_used += 1
-        db.session.commit()
+        current_user.save()
 
     return ResponseFormatter.success(
         data={'hub': hub_data},
@@ -291,11 +270,13 @@ def delete_idea(current_user, idea_id):
 @idea_bp.route('/<int:idea_id>/reanalyze', methods=['POST'])
 @token_required
 def reanalyze_idea(current_user, idea_id):
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
     
     analysis_results = IdeaAnalysisService.process_idea_analysis(idea.id)
+    # Refresh the idea from DB to get updated data
+    idea = Idea.find_by_id(idea_id)
     return ResponseFormatter.success(
         data={'idea': idea.to_dict()},
         message="Idea re-analyzed successfully"
@@ -304,7 +285,7 @@ def reanalyze_idea(current_user, idea_id):
 @idea_bp.route('/<int:idea_id>/market/research', methods=['POST'])
 @token_required
 def fetch_market_research(current_user, idea_id):
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
         
@@ -337,7 +318,6 @@ Output JSON format:
     "title": "",
     "description": "exact transcribed text here"
 }"""
-        # Extract idea from audio
         extracted_text = GeminiService.extract_idea_from_media(
             mime_type=mime_type, 
             data=file_data,
@@ -345,17 +325,14 @@ Output JSON format:
             system_instruction=system_instruction
         )
         
-        # Clean potential markdown code blocks
         cleaned_json = extracted_text.replace('```json', '').replace('```', '').strip()
         idea_data = json.loads(cleaned_json)
         
-        # Increment admin tracking credits
         current_user.api_credits_used += 1
-        db.session.commit()
+        current_user.save()
         
         return ResponseFormatter.success(
             data=idea_data,
-
             message="Voice processed successfully"
         )
         
@@ -383,7 +360,6 @@ Output JSON format:
     "title": "",
     "description": "exact extracted text here"
 }"""
-        # Extract idea from file
         extracted_text = GeminiService.extract_idea_from_media(
             mime_type=mime_type, 
             data=file_data,
@@ -391,17 +367,14 @@ Output JSON format:
             system_instruction=system_instruction
         )
         
-        # Clean potential markdown code blocks
         cleaned_json = extracted_text.replace('```json', '').replace('```', '').strip()
         idea_data = json.loads(cleaned_json)
         
-        # Increment admin tracking credits
         current_user.api_credits_used += 1
-        db.session.commit()
+        current_user.save()
         
         return ResponseFormatter.success(
             data=idea_data,
-
             message="File processed successfully"
         )
         
@@ -418,7 +391,7 @@ Output JSON format:
 @token_required
 def founder_match_score(current_user, idea_id):
     """Generate a Founder-Idea Match Score based on the user's profile and idea."""
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
 
@@ -452,9 +425,8 @@ Return JSON:
         result = GeminiService.call_gemini(prompt, "founder_match")
         if result["success"]:
             match_data = result["data"]
-            # Save match score to idea
             idea.founder_match_score = match_data.get("match_score", 0)
-            db.session.commit()
+            idea.save()
             return ResponseFormatter.success(data=match_data)
         else:
             return ResponseFormatter.error("Analysis is taking longer than usual. Please try again.", status=500)
@@ -466,7 +438,7 @@ Return JSON:
 @token_required
 def stress_test(current_user, idea_id):
     """AI Stress Test — plays devil's advocate against the idea."""
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
 
@@ -520,7 +492,7 @@ Rules:
 @token_required
 def one_line_pitch(current_user, idea_id):
     """Generate 3 one-line pitch formulas for the idea."""
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
 
@@ -541,7 +513,7 @@ Return JSON:
     "pitches": [
         {{
             "format": "Twitter Pitch",
-            "template": "The naming template used (e.g. 'We help [audience] do [benefit] by [method]')",
+            "template": "The naming template used",
             "pitch": "The actual one-liner (max 280 chars)",
             "use_case": "When to use this pitch"
         }},
@@ -590,7 +562,7 @@ def layers_start(current_user):
     try:
         result = LayersService.get_first_question(initial_idea)
         current_user.api_credits_used += 1
-        db.session.commit()
+        current_user.save()
         return ResponseFormatter.success(data=result, message="First layer question generated")
     except Exception as e:
         print(f"Layers start error: {str(e)}")
@@ -604,7 +576,7 @@ def layers_chat(current_user):
     from app.services.layers_service import LayersService
     data = request.get_json(silent=True) or {}
     initial_idea = data.get('initial_idea', '').strip()
-    history = data.get('history', [])  # alternating [question, answer, question, answer, ...]
+    history = data.get('history', [])
 
     if not initial_idea:
         return ResponseFormatter.error("Missing initial_idea")
@@ -614,7 +586,7 @@ def layers_chat(current_user):
     try:
         result = LayersService.get_next_question(initial_idea, history)
         current_user.api_credits_used += 1
-        db.session.commit()
+        current_user.save()
         return ResponseFormatter.success(data=result, message="Next layer question generated")
     except Exception as e:
         print(f"Layers chat error: {str(e)}")
@@ -634,17 +606,12 @@ def layers_finalize(current_user):
         return ResponseFormatter.error("Missing initial_idea")
 
     try:
-        # Synthesize the conversation into structured idea data
         synthesized = LayersService.synthesize_idea(initial_idea, history)
-
-        # Create the Idea record in DB
         idea = IdeaAnalysisService.create_idea(current_user.id, synthesized)
-
-        # Trigger full AI analysis
         IdeaAnalysisService.process_idea_analysis(idea.id)
 
         current_user.api_credits_used += 2
-        db.session.commit()
+        current_user.save()
 
         return ResponseFormatter.success(
             data={'idea': idea.to_dict()},
@@ -665,13 +632,12 @@ def layers_finalize(current_user):
 def layers_improve_start(current_user, idea_id):
     """Start an AI Layers improvement session for an existing, analyzed idea."""
     from app.services.layers_service import LayersService
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
 
     analysis = idea.analysis_data or {}
 
-    # Build context from existing idea + analysis
     context = f"""Existing Idea: {idea.title}
 Description: {idea.description}
 Problem: {idea.problem}
@@ -701,7 +667,7 @@ Ask targeted improvement questions."""
 def layers_improve_chat(current_user, idea_id):
     """Continue the improvement layers session."""
     from app.services.layers_service import LayersService
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
 
@@ -731,7 +697,7 @@ Weaknesses to address: {', '.join(analysis.get('risks', [])[:3])}"""
 def layers_improve_finalize(current_user, idea_id):
     """Finalize improvements — update the idea fields with refined data and increment ai_layers_count."""
     from app.services.layers_service import LayersService
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
 
@@ -742,7 +708,6 @@ def layers_improve_finalize(current_user, idea_id):
         return ResponseFormatter.error("Missing conversation history")
 
     try:
-        # Build the full context for synthesis
         context = f"""{idea.title}: {idea.description}
 Problem: {idea.problem}
 Solution: {idea.solution}
@@ -751,7 +716,6 @@ Market: {idea.industry or idea.market}"""
 
         synthesized = LayersService.synthesize_idea(context, history)
 
-        # Update idea fields with improved data (merge, don't replace blanks)
         if synthesized.get('description'):
             idea.description = synthesized['description']
         if synthesized.get('problem'):
@@ -763,10 +727,8 @@ Market: {idea.industry or idea.market}"""
         if synthesized.get('market'):
             idea.market = synthesized['market']
 
-        # Increment AI layers count — this triggers the "AI-Refined ✓" badge
         idea.ai_layers_count = (idea.ai_layers_count or 0) + 1
-
-        db.session.commit()
+        idea.save()
 
         return ResponseFormatter.success(
             data={'idea': idea.to_dict(), 'improvements': synthesized},
@@ -781,16 +743,15 @@ Market: {idea.industry or idea.market}"""
 # Competitor Watch Endpoints
 # ============================================
 
-
 @idea_bp.route('/<int:idea_id>/competitor-watch', methods=['GET'])
 @token_required
 def get_competitor_watch(current_user, idea_id):
     """Get competitor watch configuration for an idea"""
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
     
-    watch = CompetitorWatch.query.filter_by(idea_id=idea_id).first()
+    watch = CompetitorWatch.find_by_idea(idea_id)
     
     if not watch:
         return ResponseFormatter.success(
@@ -808,33 +769,29 @@ def get_competitor_watch(current_user, idea_id):
 @token_required
 def create_or_update_competitor_watch(current_user, idea_id):
     """Create or update competitor watch for an idea"""
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
     
     data = request.get_json(silent=True) or {}
     
     try:
-        watch = CompetitorWatch.query.filter_by(idea_id=idea_id).first()
+        watch = CompetitorWatch.find_by_idea(idea_id)
         
         if watch:
-            # Update existing watch
             if 'is_active' in data:
                 watch.is_active = data['is_active']
             if 'scan_frequency' in data:
                 watch.scan_frequency = data['scan_frequency']
             if 'keywords' in data:
                 watch.keywords = data['keywords']
+            watch.save()
         else:
-            # Create new watch
             result = CompetitorMonitoringService.create_watch_for_idea(idea_id)
             if 'error' in result:
                 print(f"Watch creation error for idea {idea_id}: {result['error']}")
                 return ResponseFormatter.error(result['error'])
             watch = result['watch']
-        
-        from app import db
-        db.session.commit()
         
         return ResponseFormatter.success(
             data={'watch': watch.to_dict()},
@@ -851,17 +808,16 @@ def create_or_update_competitor_watch(current_user, idea_id):
 @token_required
 def delete_competitor_watch(current_user, idea_id):
     """Delete competitor watch for an idea"""
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
     
-    watch = CompetitorWatch.query.filter_by(idea_id=idea_id).first()
+    watch = CompetitorWatch.find_by_idea(idea_id)
     if not watch:
         return ResponseFormatter.error("No watch found", status=404)
     
-    from app import db
-    db.session.delete(watch)
-    db.session.commit()
+    CompetitorAlert.delete_by_watch(watch.id)
+    watch.delete()
     
     return ResponseFormatter.success(message="Competitor watch deleted")
 
@@ -870,27 +826,21 @@ def delete_competitor_watch(current_user, idea_id):
 @token_required
 def get_competitor_alerts(current_user, idea_id):
     """Get competitor alerts for an idea"""
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
     
-    watch = CompetitorWatch.query.filter_by(idea_id=idea_id).first()
+    watch = CompetitorWatch.find_by_idea(idea_id)
     if not watch:
         return ResponseFormatter.success(
             data={'alerts': [], 'total': 0},
             message="No watch configured"
         )
     
-    # Get query parameters
     unread_only = request.args.get('unread_only', 'false').lower() == 'true'
     limit = int(request.args.get('limit', 50))
     
-    query = CompetitorAlert.query.filter_by(watch_id=watch.id)
-    
-    if unread_only:
-        query = query.filter_by(is_read=False)
-    
-    alerts = query.order_by(CompetitorAlert.discovered_at.desc()).limit(limit).all()
+    alerts = CompetitorAlert.find_by_watch(watch.id, unread_only=unread_only, limit=limit)
     
     return ResponseFormatter.success(
         data={
@@ -906,22 +856,21 @@ def get_competitor_alerts(current_user, idea_id):
 @token_required
 def mark_alert_read(current_user, alert_id):
     """Mark an alert as read"""
-    alert = CompetitorAlert.query.get(alert_id)
+    alert = CompetitorAlert.find_by_id(alert_id)
     if not alert:
         return ResponseFormatter.error("Alert not found", status=404)
     
     # Verify ownership through watch -> idea -> user
-    watch = CompetitorWatch.query.get(alert.watch_id)
+    watch = CompetitorWatch.find_by_id(alert.watch_id)
     if not watch:
         return ResponseFormatter.error("Watch not found", status=404)
     
-    idea = Idea.query.get(watch.idea_id)
+    idea = Idea.find_by_id(watch.idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Unauthorized", status=403)
     
     alert.is_read = True
-    from app import db
-    db.session.commit()
+    alert.save()
     
     return ResponseFormatter.success(
         data={'alert': alert.to_dict()},
@@ -933,11 +882,11 @@ def mark_alert_read(current_user, alert_id):
 @token_required
 def trigger_competitor_scan(current_user, idea_id):
     """Manually trigger a competitor scan"""
-    idea = Idea.query.get(idea_id)
+    idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
     
-    watch = CompetitorWatch.query.filter_by(idea_id=idea_id).first()
+    watch = CompetitorWatch.find_by_idea(idea_id)
     if not watch:
         return ResponseFormatter.error("No watch configured", status=404)
     
@@ -952,19 +901,16 @@ def trigger_competitor_scan(current_user, idea_id):
     )
 
 
-
-
 @idea_bp.route('/shared/<string:share_token>', methods=['GET'])
 def get_public_idea(share_token):
     """Public, no-auth endpoint to view a shared idea by its share token."""
-    idea = Idea.query.filter_by(share_token=share_token).first()
+    idea = Idea.find_by_share_token(share_token)
 
     if not idea:
         return ResponseFormatter.error(
             "This link is invalid or has expired.", status=404
         )
 
-    # Block access if the idea has been set to private
     if not idea.is_public:
         return ResponseFormatter.error(
             "This idea is no longer public. The owner has made it private.", status=403
@@ -972,14 +918,12 @@ def get_public_idea(share_token):
 
     # Increment public view counter
     idea.public_views = (idea.public_views or 0) + 1
-    db.session.commit()
+    idea.save()
 
     return ResponseFormatter.success(
         data={'idea': idea.to_public_dict()},
         message="Idea fetched successfully"
     )
-
-
 
 
 # ============================================
@@ -989,11 +933,11 @@ def get_public_idea(share_token):
 @idea_bp.route('/shared/<string:share_token>/comments', methods=['GET'])
 def get_shared_comments(share_token):
     """Fetch comments for a shared idea via its share token."""
-    idea = Idea.query.filter_by(share_token=share_token).first()
+    idea = Idea.find_by_share_token(share_token)
     if not idea:
         return ResponseFormatter.error("Invalid share token", status=404)
         
-    comments = Comment.query.filter_by(idea_id=idea.id).order_by(Comment.created_at.asc()).all()
+    comments = Comment.find_by_idea(idea.id)
     return ResponseFormatter.success(
         data={'comments': [c.to_dict() for c in comments]},
         message="Comments fetched successfully"
@@ -1002,7 +946,7 @@ def get_shared_comments(share_token):
 @idea_bp.route('/shared/<string:share_token>/comments', methods=['POST'])
 def post_shared_comment(share_token):
     """Post a comment to a shared idea via its share token."""
-    idea = Idea.query.filter_by(share_token=share_token).first()
+    idea = Idea.find_by_share_token(share_token)
     if not idea:
         return ResponseFormatter.error("Invalid share token", status=404)
         
@@ -1018,12 +962,10 @@ def post_shared_comment(share_token):
         author_name=author_name,
         idea_id=idea.id
     )
-    db.session.add(comment)
-    db.session.commit()
+    comment.save()
     
     return ResponseFormatter.success(
         data={'comment': comment.to_dict()},
         message="Comment posted successfully",
         status=201
     )
-

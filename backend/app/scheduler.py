@@ -7,7 +7,7 @@ from app.models.competitor_model import CompetitorWatch
 def scan_all_active_watches():
     """Scan all active competitor watches"""
     try:
-        watches = CompetitorWatch.query.filter_by(is_active=True).all()
+        watches = CompetitorWatch.find_all_active()
         print(f"[Scheduler] Starting scan for {len(watches)} active watches...")
         
         for watch in watches:

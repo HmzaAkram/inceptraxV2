@@ -2,7 +2,6 @@ from flask import Blueprint, request
 from app.middleware.auth_middleware import token_required
 from app.utils.response_formatter import ResponseFormatter
 from app.models.user_model import Notification
-from app import db
 
 notification_bp = Blueprint('notification', __name__)
 
@@ -15,21 +14,16 @@ def get_notifications(current_user):
     per_page = request.args.get('per_page', 20, type=int)
     unread_only = request.args.get('unread', 'false').lower() == 'true'
 
-    query = Notification.query.filter_by(user_id=current_user.id)
-    if unread_only:
-        query = query.filter_by(is_read=False)
+    items, total, pages = Notification.find_by_user(
+        current_user.id, unread_only=unread_only, page=page, per_page=per_page
+    )
 
-    query = query.order_by(Notification.created_at.desc())
-    paginated = query.paginate(page=page, per_page=per_page, error_out=False)
-
-    unread_count = Notification.query.filter_by(
-        user_id=current_user.id, is_read=False
-    ).count()
+    unread_count = Notification.count_unread(current_user.id)
 
     return ResponseFormatter.success(data={
-        "notifications": [n.to_dict() for n in paginated.items],
+        "notifications": [n.to_dict() for n in items],
         "unread_count": unread_count,
-        "total": paginated.total,
+        "total": total,
     })
 
 
@@ -37,10 +31,7 @@ def get_notifications(current_user):
 @token_required
 def mark_all_read(current_user):
     """Mark all notifications as read."""
-    Notification.query.filter_by(
-        user_id=current_user.id, is_read=False
-    ).update({"is_read": True})
-    db.session.commit()
+    Notification.mark_all_read(current_user.id)
     return ResponseFormatter.success(message="All notifications marked as read")
 
 
@@ -48,9 +39,9 @@ def mark_all_read(current_user):
 @token_required
 def mark_one_read(current_user, notification_id):
     """Mark a single notification as read."""
-    notif = Notification.query.get(notification_id)
+    notif = Notification.find_by_id(notification_id)
     if not notif or notif.user_id != current_user.id:
         return ResponseFormatter.error("Notification not found", status=404)
     notif.is_read = True
-    db.session.commit()
+    notif.save()
     return ResponseFormatter.success(message="Notification marked as read")

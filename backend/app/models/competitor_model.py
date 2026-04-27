@@ -1,48 +1,80 @@
-from app import db
 from datetime import datetime
+from app.models.user_model import BaseDocument, get_next_id
 
-class CompetitorWatch(db.Model):
-    __tablename__ = 'competitor_watch'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    idea_id = db.Column(db.Integer, db.ForeignKey('ideas.id'), nullable=False)
-    keywords = db.Column(db.JSON, nullable=False)  # List of search keywords
-    is_active = db.Column(db.Boolean, default=True, nullable=False)
-    scan_frequency = db.Column(db.String(20), default='daily', nullable=False)  # 'daily' or 'weekly'
-    last_scan_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    
-    # Relationship
-    idea = db.relationship('Idea', backref='competitor_watch')
-    alerts = db.relationship('CompetitorAlert', backref='watch', lazy=True, cascade='all, delete-orphan')
-    
+
+class CompetitorWatch(BaseDocument):
+    collection_name = 'competitor_watch'
+
+    def __init__(self, doc=None, **kwargs):
+        self.id = None
+        self.idea_id = None
+        self.keywords = []
+        self.is_active = True
+        self.scan_frequency = 'daily'
+        self.last_scan_at = None
+        self.created_at = datetime.utcnow()
+        super().__init__(doc, **kwargs)
+
+    @classmethod
+    def find_by_idea(cls, idea_id):
+        doc = cls.get_collection().find_one({"idea_id": idea_id})
+        return cls(doc) if doc else None
+
+    @classmethod
+    def find_all_active(cls):
+        docs = cls.get_collection().find({"is_active": True})
+        return [cls(doc) for doc in docs]
+
+    def get_alerts(self):
+        return CompetitorAlert.find_by_watch(self.id)
+
     def to_dict(self):
+        alerts = self.get_alerts()
         return {
             'id': self.id,
             'idea_id': self.idea_id,
             'keywords': self.keywords,
             'is_active': self.is_active,
             'scan_frequency': self.scan_frequency,
-            'last_scan_at': self.last_scan_at.isoformat() if self.last_scan_at else None,
-            'created_at': self.created_at.isoformat(),
-            'unread_alerts_count': sum(1 for alert in self.alerts if not alert.is_read)
+            'last_scan_at': self.last_scan_at.isoformat() if isinstance(self.last_scan_at, datetime) else None,
+            'created_at': self.created_at.isoformat() if isinstance(self.created_at, datetime) else str(self.created_at),
+            'unread_alerts_count': sum(1 for alert in alerts if not alert.is_read)
         }
 
 
-class CompetitorAlert(db.Model):
-    __tablename__ = 'competitor_alerts'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    watch_id = db.Column(db.Integer, db.ForeignKey('competitor_watch.id'), nullable=False)
-    alert_type = db.Column(db.String(50), nullable=False)  # 'new_startup', 'funding', 'launch', 'other'
-    title = db.Column(db.String(500), nullable=False)
-    snippet = db.Column(db.Text, nullable=True)
-    url = db.Column(db.String(1000), nullable=False)
-    source = db.Column(db.String(100), nullable=False)  # 'google_search', 'google_news'
-    relevance_score = db.Column(db.Float, default=0.5, nullable=False)  # 0.0 to 1.0
-    is_read = db.Column(db.Boolean, default=False, nullable=False)
-    discovered_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    
+class CompetitorAlert(BaseDocument):
+    collection_name = 'competitor_alerts'
+
+    def __init__(self, doc=None, **kwargs):
+        self.id = None
+        self.watch_id = None
+        self.alert_type = 'other'
+        self.title = ''
+        self.snippet = None
+        self.url = ''
+        self.source = ''
+        self.relevance_score = 0.5
+        self.is_read = False
+        self.discovered_at = datetime.utcnow()
+        super().__init__(doc, **kwargs)
+
+    @classmethod
+    def find_by_watch(cls, watch_id, unread_only=False, limit=50):
+        query = {"watch_id": watch_id}
+        if unread_only:
+            query["is_read"] = False
+        docs = cls.get_collection().find(query).sort("discovered_at", -1).limit(limit)
+        return [cls(doc) for doc in docs]
+
+    @classmethod
+    def find_by_url(cls, watch_id, url):
+        doc = cls.get_collection().find_one({"watch_id": watch_id, "url": url})
+        return cls(doc) if doc else None
+
+    @classmethod
+    def delete_by_watch(cls, watch_id):
+        cls.get_collection().delete_many({"watch_id": watch_id})
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -54,5 +86,5 @@ class CompetitorAlert(db.Model):
             'source': self.source,
             'relevance_score': self.relevance_score,
             'is_read': self.is_read,
-            'discovered_at': self.discovered_at.isoformat()
+            'discovered_at': self.discovered_at.isoformat() if isinstance(self.discovered_at, datetime) else str(self.discovered_at)
         }

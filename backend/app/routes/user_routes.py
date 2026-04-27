@@ -2,9 +2,6 @@ from flask import Blueprint, request
 from app.models.user_model import User, Idea
 from app.middleware.auth_middleware import token_required
 from app.utils.response_formatter import ResponseFormatter
-from app import db
-from sqlalchemy import func
-from werkzeug.security import generate_password_hash
 
 user_bp = Blueprint('user', __name__)
 
@@ -12,17 +9,13 @@ user_bp = Blueprint('user', __name__)
 @user_bp.route('/stats', methods=['GET'])
 @token_required
 def get_stats(current_user):
-    total_ideas = Idea.query.filter_by(user_id=current_user.id).count()
+    total_ideas = Idea.count_by_user(current_user.id)
 
-    # Calculate average score in Python since it's a computed property
-    user_ideas = Idea.query.filter_by(user_id=current_user.id).all()
+    user_ideas = Idea.find_by_user(current_user.id)
     scores = [idea.validation_score for idea in user_ideas if idea.validation_score > 0]
     avg_score = round(sum(scores) / len(scores), 1) if scores else 0
 
-    reports_count = Idea.query.filter(
-        Idea.user_id == current_user.id,
-        Idea.status == 'completed'
-    ).count()
+    reports_count = Idea.count_by_user(current_user.id, status='completed')
 
     stats = [
         {"name": "Ideas Created", "value": str(total_ideas)},
@@ -49,8 +42,7 @@ def update_profile(current_user):
     current_user.first_name = data.get("first_name", current_user.first_name)
     current_user.last_name = data.get("last_name", current_user.last_name)
     current_user.email = data.get("email", current_user.email)
-
-    db.session.commit()
+    current_user.save()
 
     return ResponseFormatter.success(
         message="Profile updated successfully",
@@ -67,8 +59,8 @@ def reset_password(current_user):
     if not data or not data.get("new_password"):
         return ResponseFormatter.error("New password required", 400)
 
-    current_user.password_hash = generate_password_hash(data["new_password"])
-    db.session.commit()
+    current_user.set_password(data["new_password"])
+    current_user.save()
 
     return ResponseFormatter.success(message="Password reset successful")
 
@@ -77,8 +69,7 @@ def reset_password(current_user):
 @user_bp.route('/delete-account', methods=['DELETE'])
 @token_required
 def delete_account(current_user):
-    Idea.query.filter_by(user_id=current_user.id).delete()
-    db.session.delete(current_user)
-    db.session.commit()
+    Idea.delete_by_user(current_user.id)
+    current_user.delete()
 
     return ResponseFormatter.success(message="Account deleted successfully")

@@ -1,9 +1,7 @@
 from flask import Blueprint, request
-from app.models.user_model import User, Message, BlockedUser, UserReport
+from app.models.user_model import User, Message, BlockedUser, UserReport, Notification
 from app.middleware.auth_middleware import token_required
 from app.utils.response_formatter import ResponseFormatter
-from app import db
-from sqlalchemy import or_, desc
 from datetime import datetime
 
 cofounder_bp = Blueprint('cofounder', __name__)
@@ -13,17 +11,18 @@ cofounder_bp = Blueprint('cofounder', __name__)
 def get_profiles(current_user):
     skills_query = request.args.get('skills', '').lower()
 
-    # Get blocked user IDs (both directions)
-    blocked_ids = [b.blocked_id for b in BlockedUser.query.filter_by(blocker_id=current_user.id).all()]
-    blocked_by_ids = [b.blocker_id for b in BlockedUser.query.filter_by(blocked_id=current_user.id).all()]
+    blocked_ids = BlockedUser.get_blocked_ids(current_user.id)
+    blocked_by_ids = BlockedUser.get_blocked_by_ids(current_user.id)
     exclude_ids = set(blocked_ids + blocked_by_ids + [current_user.id])
 
-    query = User.query.filter(User.is_discoverable == True, ~User.id.in_(exclude_ids))
-    
+    # Query discoverable users excluding blocked
+    coll = User.get_collection()
+    query = {"is_discoverable": True, "id": {"$nin": list(exclude_ids)}}
     if skills_query:
-        query = query.filter(User.skills.ilike(f'%{skills_query}%'))
-        
-    users = query.all()
+        query["skills"] = {"$regex": skills_query, "$options": "i"}
+    
+    docs = coll.find(query)
+    users = [User(doc) for doc in docs]
     
     profiles = [user.to_public_profile_dict() for user in users]
     return ResponseFormatter.success(data={"profiles": profiles})
@@ -55,55 +54,45 @@ def update_profile(current_user):
     if 'linkedin_url' in data:
         current_user.linkedin_url = data['linkedin_url']
         
-    db.session.commit()
+    current_user.save()
     return ResponseFormatter.success(message="Profile updated successfully")
 
 @cofounder_bp.route('/conversations', methods=['GET'])
 @token_required
 def get_conversations(current_user):
-    # Fetch all messages where current user is sender or receiver
-    messages = Message.query.filter(
-        or_(Message.sender_id == current_user.id, Message.receiver_id == current_user.id)
-    ).order_by(desc(Message.created_at)).all()
+    partner_ids = Message.find_user_conversations(current_user.id)
     
     conversations = {}
+    for partner_id in partner_ids:
+        partner = User.find_by_id(partner_id)
+        if not partner:
+            continue
+        
+        last_msg = Message.get_last_message(current_user.id, partner_id)
+        unread = Message.count_unread(current_user.id, sender_id=partner_id)
+        
+        conversations[partner_id] = {
+            "user": {
+                "id": partner.id,
+                "first_name": partner.first_name,
+                "last_name": partner.last_name
+            },
+            "last_message": last_msg.to_dict() if last_msg else None,
+            "unread_count": unread
+        }
     
-    for msg in messages:
-        other_user_id = msg.sender_id if msg.receiver_id == current_user.id else msg.receiver_id
-        
-        if other_user_id not in conversations:
-            other_user = User.query.get(other_user_id)
-            if not other_user: continue
-            
-            conversations[other_user_id] = {
-                "user": {
-                    "id": other_user.id,
-                    "first_name": other_user.first_name,
-                    "last_name": other_user.last_name
-                },
-                "last_message": msg.to_dict(),
-                "unread_count": 0
-            }
-        
-        # Count unread messages where current user is receiver
-        if msg.receiver_id == current_user.id and not msg.is_read:
-            conversations[other_user_id]["unread_count"] += 1
-            
-    # Sort conversations by last message created_at descending
-    sorted_convos = sorted(list(conversations.values()), key=lambda x: x["last_message"]["created_at"], reverse=True)
+    sorted_convos = sorted(
+        list(conversations.values()),
+        key=lambda x: x["last_message"]["created_at"] if x["last_message"] else "",
+        reverse=True
+    )
     
     return ResponseFormatter.success(data={"conversations": sorted_convos})
 
 @cofounder_bp.route('/messages/<int:user_id>', methods=['GET'])
 @token_required
 def get_messages(current_user, user_id):
-    messages = Message.query.filter(
-        or_(
-            db.and_(Message.sender_id == current_user.id, Message.receiver_id == user_id),
-            db.and_(Message.sender_id == user_id, Message.receiver_id == current_user.id)
-        )
-    ).order_by(Message.created_at).all()
-    
+    messages = Message.find_between_users(current_user.id, user_id, sort_asc=True)
     return ResponseFormatter.success(data={"messages": [msg.to_dict() for msg in messages]})
 
 @cofounder_bp.route('/messages/<int:user_id>', methods=['POST'])
@@ -115,7 +104,7 @@ def send_message(current_user, user_id):
     if not content:
         return ResponseFormatter.error("Content is required", 400)
     
-    receiver = User.query.get(user_id)
+    receiver = User.find_by_id(user_id)
     if not receiver:
         return ResponseFormatter.error("User not found", 404)
         
@@ -124,27 +113,14 @@ def send_message(current_user, user_id):
         receiver_id=user_id,
         content=content
     )
-    
-    db.session.add(msg)
-    db.session.commit()
+    msg.save()
     
     return ResponseFormatter.success(data={"message": msg.to_dict()})
 
 @cofounder_bp.route('/messages/<int:user_id>/read', methods=['PUT'])
 @token_required
 def mark_read(current_user, user_id):
-    messages = Message.query.filter(
-        Message.sender_id == user_id,
-        Message.receiver_id == current_user.id,
-        Message.is_read == False
-    ).all()
-    
-    for msg in messages:
-        msg.is_read = True
-        
-    if messages:
-        db.session.commit()
-        
+    Message.mark_as_read(sender_id=user_id, receiver_id=current_user.id)
     return ResponseFormatter.success(message="Messages marked as read")
 
 
@@ -155,16 +131,12 @@ def block_user(current_user, user_id):
     if user_id == current_user.id:
         return ResponseFormatter.error("Cannot block yourself")
 
-    existing = BlockedUser.query.filter_by(
-        blocker_id=current_user.id, blocked_id=user_id
-    ).first()
-
+    existing = BlockedUser.find_block(current_user.id, user_id)
     if existing:
         return ResponseFormatter.error("User already blocked")
 
     block = BlockedUser(blocker_id=current_user.id, blocked_id=user_id)
-    db.session.add(block)
-    db.session.commit()
+    block.save()
 
     return ResponseFormatter.success(message="User blocked successfully")
 
@@ -173,16 +145,11 @@ def block_user(current_user, user_id):
 @token_required
 def unblock_user(current_user, user_id):
     """Unblock a previously blocked user."""
-    block = BlockedUser.query.filter_by(
-        blocker_id=current_user.id, blocked_id=user_id
-    ).first()
-
+    block = BlockedUser.find_block(current_user.id, user_id)
     if not block:
         return ResponseFormatter.error("User is not blocked")
 
-    db.session.delete(block)
-    db.session.commit()
-
+    block.delete()
     return ResponseFormatter.success(message="User unblocked")
 
 
@@ -202,9 +169,8 @@ def report_user(current_user, user_id):
     report = UserReport(
         reporter_id=current_user.id,
         reported_id=user_id,
-        reason=reason[:500]  # Cap at 500 chars
+        reason=reason[:500]
     )
-    db.session.add(report)
-    db.session.commit()
+    report.save()
 
     return ResponseFormatter.success(message="Report submitted. Our team will review it within 24 hours.")

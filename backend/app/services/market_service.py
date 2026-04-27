@@ -1,7 +1,6 @@
 import os
 import json
 import requests
-from app import db
 from app.models.user_model import Idea
 
 
@@ -41,7 +40,6 @@ class MarketService:
             data = response.json()
             results = []
 
-            # Add the AI-generated answer summary
             answer = data.get("answer", "")
 
             for r in data.get("results", []):
@@ -99,13 +97,11 @@ class MarketService:
     @staticmethod
     def search(query, max_results=5):
         """Search with automatic fallback: Tavily → SerpAPI."""
-        # Try Tavily first (better for AI)
         result = MarketService._search_tavily(query, max_results)
         if result and result.get("results"):
             print(f"[Research] Tavily returned {len(result['results'])} results for: {query[:60]}")
             return result
 
-        # Fall back to SerpAPI
         result = MarketService._search_serpapi(query, max_results)
         if result and result.get("results"):
             print(f"[Research] SerpAPI returned {len(result['results'])} results for: {query[:60]}")
@@ -118,11 +114,7 @@ class MarketService:
 
     @staticmethod
     def scrape_url(url):
-        """Scrape a URL using Firecrawl and return clean markdown text.
-
-        Used for deep competitor analysis — scrapes their actual website
-        and feeds the content to Gemini for detailed competitive intelligence.
-        """
+        """Scrape a URL using Firecrawl and return clean markdown text."""
         api_key = os.environ.get('FIRECRAWL_API_KEY', '')
         if not api_key:
             return None
@@ -148,7 +140,6 @@ class MarketService:
             data = response.json()
             markdown = data.get("data", {}).get("markdown", "")
 
-            # Truncate to avoid blowing up prompts
             if len(markdown) > 3000:
                 markdown = markdown[:3000] + "\n\n[Content truncated...]"
 
@@ -164,7 +155,7 @@ class MarketService:
     @staticmethod
     def fetch_market_data(idea_id):
         """Fetch real-time market data for a specific idea."""
-        idea = Idea.query.get(idea_id)
+        idea = Idea.find_by_id(idea_id)
         if not idea:
             return None
 
@@ -199,17 +190,13 @@ class MarketService:
         market_data_copy["market_research"] = current_market_data
         idea.analysis_data = market_data_copy
 
-        db.session.commit()
+        idea.save()
 
         return aggregated_results
 
     @staticmethod
     def deep_research(query):
-        """Deep research using Tavily with AI answer summary.
-
-        Used by the Research Hub's Deep Research tab.
-        Returns both search results and an AI-generated answer.
-        """
+        """Deep research using Tavily with AI answer summary."""
         result = MarketService.search(query, max_results=8)
         return {
             "answer": result.get("answer", ""),

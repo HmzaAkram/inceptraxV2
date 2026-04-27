@@ -140,7 +140,7 @@ def forgot_password():
     import datetime
     from flask import current_app
 
-    user = User.query.filter_by(email=email).first()
+    user = User.find_by_email(email)
     if user:
         # Generate reset token (short-lived: 1 hour)
         secret = current_app.config.get('JWT_SECRET_KEY', current_app.config.get('SECRET_KEY'))
@@ -189,7 +189,6 @@ def reset_password(token):
     import jwt
     from flask import current_app
     from app.models.user_model import User
-    from app import db
 
     try:
         secret = current_app.config.get('JWT_SECRET_KEY', current_app.config.get('SECRET_KEY'))
@@ -198,12 +197,12 @@ def reset_password(token):
         if payload.get('type') != 'password_reset':
             return jsonify({'error': 'Invalid reset token'}), 400
 
-        user = User.query.get(payload['sub'])
+        user = User.find_by_id(payload['sub'])
         if not user:
             return jsonify({'error': 'Invalid reset token'}), 400
 
         user.set_password(new_password)
-        db.session.commit()
+        user.save()
 
         return jsonify({'message': 'Password reset successfully. You can now log in.'}), 200
 

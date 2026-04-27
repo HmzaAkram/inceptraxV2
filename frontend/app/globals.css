@@ -3,7 +3,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Updated color scheme to high-contrast black and white theme */
+/* ────────────────────────────────────────────────────────
+   Inceptrax Design System — High-Contrast B&W Editorial
+   ──────────────────────────────────────────────────────── */
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0 0 0);
@@ -41,38 +44,38 @@
 }
 
 .dark {
-  --background: oklch(0 0 0);
-  --foreground: oklch(1 0 0);
-  --card: oklch(0 0 0);
-  --card-foreground: oklch(1 0 0);
-  --popover: oklch(0 0 0);
-  --popover-foreground: oklch(1 0 0);
-  --primary: oklch(1 0 0);
-  --primary-foreground: oklch(0 0 0);
+  --background: oklch(0.08 0 0);
+  --foreground: oklch(0.95 0 0);
+  --card: oklch(0.1 0 0);
+  --card-foreground: oklch(0.95 0 0);
+  --popover: oklch(0.1 0 0);
+  --popover-foreground: oklch(0.95 0 0);
+  --primary: oklch(0.95 0 0);
+  --primary-foreground: oklch(0.08 0 0);
   --secondary: oklch(0.15 0 0);
-  --secondary-foreground: oklch(1 0 0);
+  --secondary-foreground: oklch(0.95 0 0);
   --muted: oklch(0.15 0 0);
-  --muted-foreground: oklch(0.6 0 0);
+  --muted-foreground: oklch(0.55 0 0);
   --accent: oklch(0.15 0 0);
-  --accent-foreground: oklch(1 0 0);
+  --accent-foreground: oklch(0.95 0 0);
   --destructive: oklch(0.5 0.2 25);
-  --destructive-foreground: oklch(1 0 0);
+  --destructive-foreground: oklch(0.95 0 0);
   --border: oklch(0.2 0 0);
   --input: oklch(0.2 0 0);
-  --ring: oklch(1 0 0);
-  --chart-1: oklch(1 0 0);
+  --ring: oklch(0.95 0 0);
+  --chart-1: oklch(0.95 0 0);
   --chart-2: oklch(0.8 0 0);
   --chart-3: oklch(0.6 0 0);
   --chart-4: oklch(0.4 0 0);
   --chart-5: oklch(0.2 0 0);
-  --sidebar: oklch(0 0 0);
-  --sidebar-foreground: oklch(1 0 0);
-  --sidebar-primary: oklch(1 0 0);
-  --sidebar-primary-foreground: oklch(0 0 0);
+  --sidebar: oklch(0.08 0 0);
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-primary: oklch(0.95 0 0);
+  --sidebar-primary-foreground: oklch(0.08 0 0);
   --sidebar-accent: oklch(0.15 0 0);
-  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-accent-foreground: oklch(0.95 0 0);
   --sidebar-border: oklch(0.2 0 0);
-  --sidebar-ring: oklch(1 0 0);
+  --sidebar-ring: oklch(0.95 0 0);
 }
 
 @theme inline {
@@ -123,6 +126,8 @@
 
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   .container {
@@ -132,5 +137,68 @@
   ::selection {
     background-color: var(--primary);
     color: var(--primary-foreground);
+  }
+}
+
+/* ────────────────────────────────────────────────────────
+   Premium UI Enhancements
+   ──────────────────────────────────────────────────────── */
+
+/* Film grain texture overlay */
+@layer utilities {
+  .grain-overlay::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Glassmorphism card utility */
+  .glass-card {
+    background: oklch(1 0 0 / 0.6);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid oklch(0 0 0 / 0.06);
+  }
+
+  .dark .glass-card {
+    background: oklch(0.1 0 0 / 0.6);
+    border-color: oklch(1 0 0 / 0.08);
+  }
+
+  /* Smooth scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.7 0 0) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: oklch(0.7 0 0);
+    border-radius: 999px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.5 0 0);
+  }
+}
+
+/* Premium focus ring style */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 }
