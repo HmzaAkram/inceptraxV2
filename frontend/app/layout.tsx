@@ -7,7 +7,6 @@ import "./globals.css"
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
-
 export const metadata: Metadata = {
   title: "Inceptrax - Transform Ideas into Business Plans",
   description:
@@ -33,8 +32,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Inceptrax – AI Co-Founder",
-    description:
-      "Stop guessing. Validate your startup idea with AI.",
+    description: "Stop guessing. Validate your startup idea with AI.",
     images: ["https://inceptrax-v2.vercel.app/og-home.png"],
   },
 }
@@ -42,6 +40,8 @@ export const metadata: Metadata = {
 import { AuthProvider } from "@/components/auth-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { VisitTracker } from "@/components/visit-tracker"
+import { PostHogProvider } from "@/components/posthog-provider"
+import { LenisProvider } from "@/components/lenis-provider"
 
 export default function RootLayout({
   children,
@@ -50,12 +50,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans antialiased`} suppressHydrationWarning={true}>
-        <AuthProvider>
-          <VisitTracker />
-          {children}
-          <Toaster position="top-center" richColors />
-        </AuthProvider>
+      <body className="font-sans antialiased" suppressHydrationWarning={true}>
+        <PostHogProvider>
+          <AuthProvider>
+            <LenisProvider>
+              <VisitTracker />
+              {children}
+            </LenisProvider>
+            <Toaster />
+          </AuthProvider>
+        </PostHogProvider>
         <Analytics />
       </body>
     </html>

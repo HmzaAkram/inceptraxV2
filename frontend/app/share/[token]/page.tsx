@@ -2,7 +2,7 @@ import { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { PublicIdeaView } from "@/components/public-idea-view"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 
 async function fetchPublicIdea(token: string) {
     try {

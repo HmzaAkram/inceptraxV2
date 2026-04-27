@@ -1,0 +1,67 @@
+You are compiling the FINAL REPORT for a specific startup idea that has been analyzed across 7 stages.
+
+=== IDEA CONTEXT (ANALYZE SPECIFICALLY FOR THIS — DO NOT USE GENERIC TEMPLATES) ===
+Idea Title: {title}
+Description: {description}
+Industry: {industry}
+Target Market: {target_market}
+Target Audience: {target_audience}
+Problem Being Solved: {problem}
+Proposed Solution: {solution}
+Current Stage: {stage}
+=== END IDEA CONTEXT ===
+
+{previous_context}
+
+TASK: Synthesize ALL previous stage results into a comprehensive final report. This is the executive summary that ties everything together.
+
+Return the response in this EXACT JSON format:
+{{
+    "overall_score": 0-100,
+    "verdict": "Ready to Launch / Needs Refinement / High Risk — Reconsider",
+    "risk_level": "Low / Medium / High",
+    "one_liner": "One sentence that summarizes this idea's potential",
+    "executive_summary": "3-5 sentence executive summary pulling key findings from every stage",
+    "top_strengths": [
+        "Strength 1 with specific evidence from the analysis",
+        "Strength 2",
+        "Strength 3",
+        "Strength 4"
+    ],
+    "top_risks": [
+        "Risk 1 with specific evidence",
+        "Risk 2",
+        "Risk 3",
+        "Risk 4"
+    ],
+    "top_recommendations": [
+        "Recommendation 1 — actionable, specific",
+        "Recommendation 2",
+        "Recommendation 3"
+    ],
+    "ninety_day_plan": {{
+        "month_1": {{
+            "focus": "Foundation",
+            "milestones": ["Milestone 1", "Milestone 2", "Milestone 3"]
+        }},
+        "month_2": {{
+            "focus": "Build",
+            "milestones": ["Milestone 1", "Milestone 2", "Milestone 3"]
+        }},
+        "month_3": {{
+            "focus": "Launch",
+            "milestones": ["Milestone 1", "Milestone 2", "Milestone 3"]
+        }}
+    }},
+    "key_metrics_to_track": [
+        {{ "metric": "Metric name", "target": "Target value", "why": "Why this matters" }}
+    ]
+}}
+
+RULES:
+- The overall_score must be a weighted average reflecting ALL stages — not just one
+- Score >= 75: "Ready to Launch". Score 50-74: "Needs Refinement". Score < 50: "High Risk — Reconsider"
+- Every strength and risk must reference specific findings from previous stages
+- The 90-day plan must be actionable and specific to THIS idea
+- Use simple, non-technical language
+- Return ONLY valid JSON, no markdown

@@ -3,34 +3,35 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Lightbulb, TrendingUp, BarChart3, ArrowRight, Plus, Loader2, Sparkles, Layers } from "lucide-react"
+import { StatCardSkeleton, IdeaCardSkeleton } from "@/components/ui/skeleton"
+import { Lightbulb, TrendingUp, BarChart3, ArrowRight, Plus, Sparkles, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
+import { cn } from "@/lib/utils"
+import { usePageTransition } from "@/hooks/usePageTransition"
 
-interface Stat {
-  name: string;
-  value: string;
-  icon: any;
-  change: string;
+interface Stat { name: string; value: string; icon: any; change: string }
+interface Idea { id: number; title: string; created_at: string; overall_score: number; status: string }
+
+const iconMap: Record<string, any> = { Lightbulb, TrendingUp, BarChart3 }
+
+const STATUS_STYLES: Record<string, string> = {
+  completed:  "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  processing: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  pending:    "bg-muted text-muted-foreground",
+  failed:     "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400",
 }
 
-interface Idea {
-  id: number;
-  title: string;
-  created_at: string;
-  validation_score: number;
-  status: string;
+function getScoreBadge(score: number) {
+  if (score >= 75) return "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400 border border-green-200 dark:border-green-900"
+  if (score >= 50) return "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200 dark:border-amber-900"
+  return "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400 border border-red-200 dark:border-red-900"
 }
-
-const iconMap: Record<string, any> = {
-  Lightbulb,
-  TrendingUp,
-  BarChart3,
-};
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const pageRef = usePageTransition()
   const [stats, setStats] = useState<Stat[]>([])
   const [recentIdeas, setRecentIdeas] = useState<Idea[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -40,149 +41,155 @@ export default function DashboardPage() {
       try {
         const [statsData, ideasData] = await Promise.all([
           apiFetch("/users/stats"),
-          apiFetch("/ideas/")
-        ]);
-
-        const formattedStats = statsData.data.stats.map((s: any) => ({
-          ...s,
-          icon: iconMap[s.icon] || Lightbulb
-        }));
-
-        setStats(formattedStats);
-        setRecentIdeas(ideasData.data.ideas.slice(0, 3));
+          apiFetch("/ideas/"),
+        ])
+        setStats(statsData.data.stats.map((s: any) => ({ ...s, icon: iconMap[s.icon] || Lightbulb })))
+        setRecentIdeas(ideasData.data.ideas.slice(0, 4))
       } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
+        console.error("Failed to fetch dashboard data:", error)
       } finally {
-        setIsLoading(false);
+        setIsLoading(false)
       }
     }
-
-    fetchDashboardData();
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
+    fetchDashboardData()
+  }, [])
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div ref={pageRef} className="space-y-8 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-start justify-between pt-1">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Welcome back, {user?.first_name || 'Founder'}</h1>
-          <p className="text-muted-foreground">Here's an overview of your startup ideas and progress.</p>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Welcome back, {user?.first_name || "Founder"} 👋
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Here&apos;s an overview of your ideas and progress.
+          </p>
         </div>
-        <Button asChild className="rounded-xl gap-2 font-semibold">
+        <Button asChild className="gap-2 shrink-0">
           <Link href="/dashboard/new-idea">
-            <Plus className="h-5 w-5" /> New Idea
+            <Plus className="h-4 w-4" /> New Idea
           </Link>
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {stats.map((stat) => (
-          <Card key={stat.name} className="border-none shadow-sm bg-card/50">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{stat.name}</CardTitle>
-              <stat.icon className="h-5 w-5 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-              <p className="text-xs text-primary font-medium mt-1">{stat.change}</p>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Stat cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {isLoading
+          ? Array.from({ length: 3 }).map((_, i) => <StatCardSkeleton key={i} />)
+          : stats.map((stat) => (
+              <div
+                key={stat.name}
+                className="rounded-xl border bg-card p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-px"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{stat.name}</p>
+                  <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
+                    <stat.icon className="h-4 w-4 text-foreground/70" />
+                  </div>
+                </div>
+                <div className="text-2xl font-bold tabular-nums tracking-tight">{stat.value}</div>
+                <p className="text-xs text-muted-foreground mt-1.5">{stat.change}</p>
+              </div>
+            ))}
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-3">
-        <Card className="lg:col-span-2 border-none shadow-sm overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between">
+      {/* Main grid */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Recent ideas */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
-              <CardTitle className="text-foreground">Recent Ideas</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">Manage and track your latest concepts.</p>
+              <CardTitle className="text-base">Recent Ideas</CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">Your latest startup concepts</p>
             </div>
-            <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80 font-medium" asChild>
-              <Link href="/dashboard/ideas">View all</Link>
+            <Button variant="ghost" size="sm" asChild className="text-xs h-8">
+              <Link href="/dashboard/ideas">View all <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
             </Button>
           </CardHeader>
+
           <CardContent className="p-0">
-            <div className="divide-y divide-border">
-              {recentIdeas.length > 0 ? (
-                recentIdeas.map((idea) => (
-                  <div
+            {isLoading ? (
+              <div className="px-6 pb-6 space-y-3 pt-2">
+                {Array.from({ length: 3 }).map((_, i) => <IdeaCardSkeleton key={i} />)}
+              </div>
+            ) : recentIdeas.length > 0 ? (
+              <div className="divide-y divide-border">
+                {recentIdeas.map((idea) => (
+                  <Link
                     key={idea.id}
-                    className="flex items-center justify-between p-6 hover:bg-muted/30 transition-colors"
+                    href={`/dashboard/idea/${idea.id}/validation`}
+                    className="group flex items-center justify-between px-6 py-4 hover:bg-muted/40 transition-colors duration-150"
                   >
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-lg text-foreground">{idea.title}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {new Date(idea.created_at).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                        <Lightbulb className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{idea.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {new Date(idea.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      {idea.overall_score > 0 && (
+                        <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full tabular-nums", getScoreBadge(idea.overall_score))}>
+                          {idea.overall_score}
+                        </span>
+                      )}
+                      <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-full capitalize", STATUS_STYLES[idea.status] || STATUS_STYLES.pending)}>
+                        {idea.status}
                       </span>
                     </div>
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        <div className="text-sm font-medium text-muted-foreground">Validation Score</div>
-                        <div className="text-xl font-bold text-primary">{idea.validation_score || 0}%</div>
-                      </div>
-                      <Button variant="outline" size="sm" className="rounded-lg h-9 bg-transparent border-primary/20 text-primary hover:bg-primary/5" asChild>
-                        <Link href={`/dashboard/idea/${idea.id}/validation`}>
-                          Analyze <ArrowRight className="h-4 w-4 ml-2" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-12 text-center text-muted-foreground">
-                  No ideas yet. Create your first one to see it here!
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 text-center gap-4 px-6">
+                <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center">
+                  <Sparkles className="h-7 w-7 text-muted-foreground" />
                 </div>
-              )}
-            </div>
+                <div>
+                  <p className="font-semibold">No ideas yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Create your first idea and get an AI-powered analysis in minutes</p>
+                </div>
+                <Button asChild className="mt-1 gap-2">
+                  <Link href="/dashboard/new-idea"><Plus className="h-4 w-4" /> Analyze your first idea →</Link>
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm bg-primary text-primary-foreground rounded-xl">
-  <CardHeader>
-    <CardTitle className="text-xl font-semibold">Quick Tips & Resources</CardTitle>
-  </CardHeader>
-  <CardContent className="space-y-4">
-    <p className="text-primary-foreground/90 leading-relaxed">
-      Boost your startup with these quick actionable tips and helpful resources.
-    </p>
-    <ul className="space-y-3 text-sm">
-      <li className="flex items-center gap-2">
-        <div className="h-1.5 w-1.5 rounded-full bg-white" />
-        Validate your idea early and often with real user feedback.
-      </li>
-      <li className="flex items-center gap-2">
-        <div className="h-1.5 w-1.5 rounded-full bg-white" />
-        Use data-driven GTM strategies to target the right audience.
-      </li>
-      <li className="flex items-center gap-2">
-        <div className="h-1.5 w-1.5 rounded-full bg-white" />
-        Monitor your KPIs regularly to track your growth trajectory.
-      </li>
-    </ul>
-    <Button
-      variant="secondary"
-      className="w-full h-11 rounded-xl font-semibold shadow-md"
-      onClick={() => window.open('https://example.com/resources', '_blank')}
-    >
-      Explore More
-    </Button>
-  </CardContent>
-</Card>
-
-        
-
+        {/* Resources panel */}
+        <Card className="bg-foreground text-background border-0 shadow-md">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base text-background">Founder Resources</CardTitle>
+            <p className="text-sm text-background/60 leading-relaxed">Curated tips to accelerate your startup journey.</p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <ul className="space-y-3">
+              {[
+                "Validate your idea early with real user feedback",
+                "Use data-driven GTM strategies to find your audience",
+                "Monitor KPIs weekly to stay on your growth trajectory",
+              ].map((tip, i) => (
+                <li key={i} className="flex items-start gap-2.5 text-sm text-background/80">
+                  <span className="mt-1.5 h-1 w-1 rounded-full bg-background/50 shrink-0" />
+                  {tip}
+                </li>
+              ))}
+            </ul>
+            <Button
+              variant="secondary"
+              className="w-full gap-2 font-medium"
+              onClick={() => window.open("https://www.ycombinator.com/library", "_blank")}
+            >
+              <ExternalLink className="h-3.5 w-3.5" /> YC Library
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

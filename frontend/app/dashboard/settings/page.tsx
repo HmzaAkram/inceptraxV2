@@ -2,297 +2,316 @@
 
 import { useEffect, useState } from "react"
 import { apiFetch } from "@/lib/api"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { useAuth } from "@/components/auth-provider"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { Loader2, Shield, User, Users, AlertTriangle, Bell, Eye, EyeOff } from "lucide-react"
+import { toast } from "sonner"
+import { cn } from "@/lib/utils"
+
+/* ── Password strength ──────────────────────────────────────── */
+function getPasswordStrength(pw: string): { level: number; label: string; color: string } {
+  if (!pw) return { level: 0, label: "", color: "" }
+  let score = 0
+  if (pw.length >= 8)           score++
+  if (pw.length >= 12)          score++
+  if (/[A-Z]/.test(pw))        score++
+  if (/[0-9]/.test(pw))        score++
+  if (/[^A-Za-z0-9]/.test(pw)) score++
+  if (score <= 1) return { level: 1, label: "Weak",   color: "#ef4444" }
+  if (score <= 3) return { level: 2, label: "Fair",   color: "#f59e0b" }
+  if (score === 4) return { level: 3, label: "Good",  color: "#22c55e" }
+  return                        { level: 4, label: "Strong", color: "#ffffff" }
+}
+
+/* ── Toggle row ─────────────────────────────────────────────── */
+function ToggleRow({ id, label, description, checked, onCheckedChange }: {
+  id: string; label: string; description: string; checked: boolean; onCheckedChange: (v: boolean) => void
+}) {
+  return (
+    <div className="flex items-center justify-between p-4 rounded-xl border bg-muted/30">
+      <div>
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+      </div>
+      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
+  )
+}
 
 export default function SettingsPage() {
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-
-  const [form, setForm] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-  })
-
+  const { logout } = useAuth()
+  const [loading, setLoading]   = useState(true)
+  const [saving, setSaving]     = useState(false)
+  const [savingCF, setSavingCF] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState("")
+  const [showPw, setShowPw]     = useState(false)
   const [password, setPassword] = useState("")
-  const [savingCoFounder, setSavingCoFounder] = useState(false)
-  
+  const pwStrength = getPasswordStrength(password)
+
+  const [notifs, setNotifs] = useState({
+    email_analysis: true, cofounder_msg: true, platform_updates: false,
+  })
+  const [form, setForm] = useState({ first_name: "", last_name: "", email: "" })
   const [coFounderForm, setCoFounderForm] = useState({
-    is_discoverable: false,
-    bio: "",
-    skills: "",
-    looking_for: "",
-    linkedin_url: "",
+    is_discoverable: false, bio: "", skills: "", looking_for: "", linkedin_url: "",
   })
 
-  // ------------------ FETCH PROFILE ------------------
   async function fetchProfile() {
     try {
       const res = await apiFetch("/users/profile")
       setForm(res.data.user)
       setCoFounderForm({
         is_discoverable: res.data.user.is_discoverable || false,
-        bio: res.data.user.bio || "",
-        skills: res.data.user.skills || "",
-        looking_for: res.data.user.looking_for || "",
+        bio:          res.data.user.bio || "",
+        skills:       res.data.user.skills || "",
+        looking_for:  res.data.user.looking_for || "",
         linkedin_url: res.data.user.linkedin_url || "",
       })
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
+    } catch (err) { console.error(err) }
+    finally { setLoading(false) }
   }
 
-  useEffect(() => {
-    fetchProfile()
-  }, [])
+  useEffect(() => { fetchProfile() }, [])
 
-  // ------------------ SAVE PROFILE ------------------
   async function handleSaveProfile() {
     setSaving(true)
     try {
-      await apiFetch("/users/profile", {
-        method: "PUT",
-        body: JSON.stringify(form),
-      })
-      alert("Profile updated successfully")
+      await apiFetch("/users/profile", { method: "PUT", body: JSON.stringify(form) })
+      toast.success("Profile updated", { description: "Your changes have been saved." })
     } catch (err: any) {
-      alert(err.message)
-    } finally {
-      setSaving(false)
-    }
+      toast.error("Failed to save", { description: err.message || "Please try again." })
+    } finally { setSaving(false) }
   }
 
-  // ------------------ SAVE CO-FOUNDER PROFILE ------------------
   async function handleSaveCoFounder() {
-    setSavingCoFounder(true)
+    setSavingCF(true)
     try {
-      await apiFetch("/cofounder/profile", {
-        method: "PUT",
-        body: JSON.stringify(coFounderForm),
-      })
-      alert("Co-Founder preferences updated successfully")
+      await apiFetch("/cofounder/profile", { method: "PUT", body: JSON.stringify(coFounderForm) })
+      toast.success(coFounderForm.is_discoverable ? "You are now discoverable" : "Co-founder settings saved",
+        { description: "Changes applied." })
     } catch (err: any) {
-      alert(err.message)
-    } finally {
-      setSavingCoFounder(false)
-    }
+      toast.error("Failed to save", { description: err.message || "Please try again." })
+    } finally { setSavingCF(false) }
   }
 
-  // ------------------ RESET PASSWORD ------------------
   async function handleResetPassword() {
-    if (!password) return alert("Enter new password")
-
+    if (!password) { toast.error("Enter a new password"); return }
+    if (pwStrength.level < 2) { toast.error("Password too weak", { description: "Use at least 8 characters." }); return }
     try {
-      await apiFetch("/users/reset-password", {
-        method: "PUT",
-        body: JSON.stringify({ new_password: password }),
-      })
-      alert("Password reset successful")
+      await apiFetch("/users/reset-password", { method: "PUT", body: JSON.stringify({ new_password: password }) })
+      toast.success("Password updated", { description: "Your password has been changed." })
       setPassword("")
     } catch (err: any) {
-      alert(err.message)
+      toast.error("Failed to reset password", { description: err.message || "Please try again." })
     }
   }
 
-  // ------------------ DELETE ACCOUNT ------------------
   async function handleDeleteAccount() {
-    const confirmDelete = confirm(
-      "Are you sure? This will permanently delete your account."
-    )
-
-    if (!confirmDelete) return
-
+    if (deleteConfirm !== "DELETE") {
+      toast.error("Type DELETE to confirm"); return
+    }
     try {
-      await apiFetch("/users/delete-account", {
-        method: "DELETE",
-      })
-      localStorage.removeItem("token")
-      window.location.href = "/login"
+      await apiFetch("/users/delete-account", { method: "DELETE" })
+      toast.success("Account deleted")
+      logout()
     } catch (err: any) {
-      alert(err.message)
+      toast.error("Failed to delete account", { description: err.message || "Please try again." })
     }
   }
 
-  if (loading) return <p>Loading...</p>
+  if (loading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Loading your settings…</p>
+        </div>
+      </div>
+    )
+  }
+
+  const initials = `${form.first_name?.[0] || ""}${form.last_name?.[0] || ""}`.toUpperCase() || "U"
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold">Settings</h1>
+    <div className="space-y-6 max-w-3xl mx-auto pb-12">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+        <p className="text-muted-foreground mt-1 text-sm">Manage your account and preferences</p>
+      </div>
 
-      {/* PROFILE */}
+      {/* ── SECTION 1: Profile ─────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle>Profile Information</CardTitle>
-        </CardHeader>
-
-        <CardContent className="space-y-6">
-          <div className="flex gap-6 items-center">
-            <Avatar className="h-20 w-20">
-              <AvatarImage src="/diverse-user-avatars.png" />
-              <AvatarFallback>
-                {form.first_name[0]}
-                {form.last_name[0]}
-              </AvatarFallback>
-            </Avatar>
+          <div className="flex items-center gap-2">
+            <User className="h-5 w-5 text-muted-foreground" />
+            <CardTitle>Profile Information</CardTitle>
           </div>
-
+          <CardDescription>Update your name and email address</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-foreground text-background flex items-center justify-center text-lg font-bold shrink-0">
+              {initials}
+            </div>
+            <div>
+              <p className="font-semibold">{form.first_name} {form.last_name}</p>
+              <p className="text-sm text-muted-foreground">{form.email}</p>
+            </div>
+          </div>
           <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <Label>First Name</Label>
-              <Input
-                value={form.first_name}
-                onChange={(e) =>
-                  setForm({ ...form, first_name: e.target.value })
-                }
-              />
-            </div>
-
-            <div>
-              <Label>Last Name</Label>
-              <Input
-                value={form.last_name}
-                onChange={(e) =>
-                  setForm({ ...form, last_name: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <Label>Email</Label>
-              <Input
-                value={form.email}
-                onChange={(e) =>
-                  setForm({ ...form, email: e.target.value })
-                }
-              />
+            {[
+              { id: "first_name", label: "First Name", key: "first_name" as const },
+              { id: "last_name",  label: "Last Name",  key: "last_name"  as const },
+            ].map(({ id, label, key }) => (
+              <div key={id} className="space-y-1.5">
+                <Label htmlFor={id}>{label}</Label>
+                <Input id={id} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
+              </div>
+            ))}
+            <div className="md:col-span-2 space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </div>
           </div>
-
-          <Button onClick={handleSaveProfile} disabled={saving}>
-            {saving ? "Saving..." : "Save Changes"}
-          </Button>
+          <Button onClick={handleSaveProfile} loading={saving}>Save Profile</Button>
         </CardContent>
       </Card>
 
-      {/* CO-FOUNDER NETWORK */}
+      {/* ── SECTION 2: Security ────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle>Co-Founder Network</CardTitle>
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-muted-foreground" />
+            <CardTitle>Security</CardTitle>
+          </div>
+          <CardDescription>Change your password</CardDescription>
         </CardHeader>
-
-        <CardContent className="space-y-6">
-          <div className="flex items-center space-x-2">
-            <Switch
-              checked={coFounderForm.is_discoverable}
-              onCheckedChange={(checked) =>
-                setCoFounderForm({ ...coFounderForm, is_discoverable: checked })
-              }
-              id="discoverable"
-            />
-            <Label htmlFor="discoverable">Make me discoverable to other founders</Label>
+        <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="new-password">New Password</Label>
+            <div className="relative">
+              <Input
+                id="new-password"
+                type={showPw ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter new password"
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw(!showPw)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {/* Password strength bar */}
+            {password && (
+              <div className="space-y-1.5 mt-2">
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className="pw-strength-bar flex-1"
+                      style={{
+                        backgroundColor: i <= pwStrength.level ? pwStrength.color : "var(--border)",
+                        width: "100%",
+                      }}
+                    />
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Strength: <span style={{ color: pwStrength.color }}>{pwStrength.label}</span>
+                </p>
+              </div>
+            )}
           </div>
-
-          <div className="space-y-4">
-            <div>
-              <Label>Bio</Label>
-              <Textarea
-                placeholder="A short intro about yourself..."
-                value={coFounderForm.bio}
-                onChange={(e) => setCoFounderForm({ ...coFounderForm, bio: e.target.value })}
-              />
-            </div>
-            
-            <div>
-              <Label>Skills (Comma separated)</Label>
-              <Input
-                placeholder="React, Python, Marketing"
-                value={coFounderForm.skills}
-                onChange={(e) => setCoFounderForm({ ...coFounderForm, skills: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <Label>Looking For</Label>
-              <Input
-                placeholder="A technical co-founder skilled in AI"
-                value={coFounderForm.looking_for}
-                onChange={(e) => setCoFounderForm({ ...coFounderForm, looking_for: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <Label>LinkedIn URL</Label>
-              <Input
-                placeholder="https://linkedin.com/in/..."
-                value={coFounderForm.linkedin_url}
-                onChange={(e) => setCoFounderForm({ ...coFounderForm, linkedin_url: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <Button onClick={handleSaveCoFounder} disabled={savingCoFounder}>
-            {savingCoFounder ? "Saving..." : "Save Co-Founder Settings"}
-          </Button>
+          <Button onClick={handleResetPassword}>Reset Password</Button>
         </CardContent>
       </Card>
 
-      {/* RESET PASSWORD */}
+      {/* ── SECTION 3: Notifications ───────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle>Reset Password</CardTitle>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          <div>
-            <Label>New Password</Label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+          <div className="flex items-center gap-2">
+            <Bell className="h-5 w-5 text-muted-foreground" />
+            <CardTitle>Notifications</CardTitle>
           </div>
-
-          <Button onClick={handleResetPassword}>
-            Reset Password
-          </Button>
+          <CardDescription>Control what emails you receive</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <ToggleRow id="notif-analysis"  label="Analysis complete"     description="Get an email when your idea analysis finishes"         checked={notifs.email_analysis}    onCheckedChange={(v) => setNotifs({ ...notifs, email_analysis: v })} />
+          <ToggleRow id="notif-cofounder" label="Co-founder messages"   description="Be notified when a founder sends you a message"        checked={notifs.cofounder_msg}     onCheckedChange={(v) => setNotifs({ ...notifs, cofounder_msg: v })} />
+          <ToggleRow id="notif-platform"  label="Platform updates"      description="Product updates, new features, and announcements"      checked={notifs.platform_updates}  onCheckedChange={(v) => setNotifs({ ...notifs, platform_updates: v })} />
+          <Button onClick={() => toast.success("Notification preferences saved")} className="mt-2">Save Preferences</Button>
         </CardContent>
       </Card>
 
-      {/* DELETE ACCOUNT */}
-      <Card className="border-red-300 bg-red-50">
+      {/* ── SECTION 4: Co-Founder Network ──────────────────── */}
+      <Card>
         <CardHeader>
-          <CardTitle className="text-red-600">
-            Danger Zone
-          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-muted-foreground" />
+            <CardTitle>Co-Founder Network</CardTitle>
+          </div>
+          <CardDescription>Set up your profile to find co-founders</CardDescription>
         </CardHeader>
-
         <CardContent className="space-y-4">
-          <p className="text-red-600 text-sm">
-            This action is permanent and cannot be undone.
+          <ToggleRow id="discoverable" label="Make me discoverable" description="Other founders can find and message you"
+            checked={coFounderForm.is_discoverable} onCheckedChange={(v) => setCoFounderForm({ ...coFounderForm, is_discoverable: v })} />
+          {[
+            { id: "bio",          label: "Bio",                        type: "textarea", placeholder: "A short intro about yourself…" },
+            { id: "skills",       label: "Skills (comma-separated)",   type: "input",    placeholder: "React, Python, Marketing" },
+            { id: "looking_for",  label: "Looking For",                type: "input",    placeholder: "A technical co-founder skilled in AI" },
+            { id: "linkedin_url", label: "LinkedIn URL",               type: "input",    placeholder: "https://linkedin.com/in/…" },
+          ].map(({ id, label, type, placeholder }) => (
+            <div key={id} className="space-y-1.5">
+              <Label htmlFor={id}>{label}</Label>
+              {type === "textarea" ? (
+                <Textarea id={id} placeholder={placeholder} value={(coFounderForm as any)[id]}
+                  onChange={(e) => setCoFounderForm({ ...coFounderForm, [id]: e.target.value })} rows={3} />
+              ) : (
+                <Input id={id} placeholder={placeholder} value={(coFounderForm as any)[id]}
+                  onChange={(e) => setCoFounderForm({ ...coFounderForm, [id]: e.target.value })} />
+              )}
+            </div>
+          ))}
+          <Button onClick={handleSaveCoFounder} loading={savingCF}>Save Co-Founder Settings</Button>
+        </CardContent>
+      </Card>
+
+      {/* ── SECTION 5: Danger Zone ─────────────────────────── */}
+      <Card className="border-destructive/50">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <CardTitle className="text-destructive">Danger Zone</CardTitle>
+          </div>
+          <CardDescription>Permanently delete your account and all associated data</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            This action is <strong>permanent</strong> and cannot be undone.
+            All your ideas, analyses, and data will be lost.
           </p>
-
-          <Button
-            variant="destructive"
-            onClick={handleDeleteAccount}
-          >
-            Delete Account
+          <div className="space-y-1.5">
+            <Label htmlFor="delete-confirm">Type <strong>DELETE</strong> to confirm</Label>
+            <Input
+              id="delete-confirm"
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              placeholder="DELETE"
+              className="max-w-xs"
+            />
+          </div>
+          <Button variant="destructive" onClick={handleDeleteAccount} disabled={deleteConfirm !== "DELETE"}>
+            Delete Account Permanently
           </Button>
         </CardContent>
       </Card>

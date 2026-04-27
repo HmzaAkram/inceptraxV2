@@ -1,204 +1,188 @@
-"use client";
+"use client"
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
-import { ArrowRight, Search, BarChart3, Users, Target, Rocket, CheckCircle2 } from "lucide-react"
-import { Logo } from "@/components/logo"
-import CountUp from "react-countup"
+import { ArrowRight, BarChart3, Users, Rocket, CheckCircle2 } from "lucide-react"
+import { useScrollReveal } from "@/hooks/useScrollReveal"
+
+const features = [
+  { icon: "🔍", title: "Idea Validation",       desc: "Score your idea across 6 dimensions with real market data and AI-driven analysis." },
+  { icon: "📊", title: "Market Research",        desc: "Live TAM, SAM, SOM data with CAGR and trend analysis sourced from the web." },
+  { icon: "🆚", title: "Competitor Analysis",    desc: "Real competitor names, weaknesses, and market gaps you can exploit." },
+  { icon: "💰", title: "Monetization Strategy",  desc: "Revenue models, pricing tiers, and LTV:CAC benchmarks tailored to your idea." },
+  { icon: "🛠️", title: "MVP Blueprint",          desc: "Feature roadmap, tech stack recommendations, and budget breakdown." },
+  { icon: "🚀", title: "Go-To-Market",           desc: "Launch channels, 90-day action plan, and customer acquisition targets." },
+]
+
+const steps = [
+  { num: "01", title: "Describe your idea",       desc: "Type your startup concept in plain language. No forms, no complexity." },
+  { num: "02", title: "AI analyzes in real-time", desc: "8 sequential AI stages run with live web research for accurate, current data." },
+  { num: "03", title: "Get your full report",     desc: "Scores, insights, investor pitches, and a 90-day action plan — in minutes." },
+]
+
+const stats = [
+  { value: "2,400+", label: "Ideas validated" },
+  { value: "87%",    label: "Avg accuracy score" },
+  { value: "8",      label: "Analysis stages" },
+  { value: "3 min",  label: "Average analysis time" },
+]
+
+const testimonials = [
+  {
+    quote: "Inceptrax saved me 6 months of dev time. It correctly identified a saturated market I was about to enter and suggested a pivot that got us funded.",
+    name: "Sarah J.", role: "Founder, TechFlow", initials: "SJ",
+  },
+  {
+    quote: "The MVP blueprint feature is insane. It prioritized my features better than my actual product manager. Essential for indie hackers.",
+    name: "David K.", role: "Indie Hacker", initials: "DK",
+  },
+]
 
 export default function LandingPage() {
-  const stats = [
-    { name: "Ideas Validated", value: 1240, icon: CheckCircle2 },
-    { name: "Founders Joined", value: 5023, icon: Users },
-    { name: "Hours Saved", value: 45000, icon: BarChart3 },
-  ]
+  const heroRef     = useScrollReveal(0.06)
+  const statsRef    = useScrollReveal(0.06)
+  const featuresRef = useScrollReveal(0.07)
+  const stepsRef    = useScrollReveal(0.08)
+  const socialRef   = useScrollReveal(0.08)
 
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
 
       <main className="flex-grow">
-        {/* Hero Section */}
-        <section className="relative pt-0 pb-20 lg:pb-32 overflow-hidden">
-          <div className="container px-4 text-center relative z-10">
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-balance mb-6">
-              Stop Guessing. <span className="text-primary">Start Building.</span><br />
-              Verify Your Idea in Minutes.
+        {/* ── Hero ─────────────────────────────────────────── */}
+        <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 overflow-hidden">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl -z-10 pointer-events-none" />
+
+          <div ref={heroRef} className="container px-4 text-center relative z-10 max-w-5xl mx-auto">
+            <div data-reveal className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-muted/50 text-xs font-medium text-muted-foreground mb-8">
+              <span className="w-1.5 h-1.5 rounded-full bg-foreground animate-pulse" />
+              AI-powered startup analysis · 8 deep stages
+            </div>
+
+            <h1 data-reveal className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight tracking-tight text-balance mb-6">
+              Validate your startup idea{" "}
+              <span className="underline underline-offset-4 decoration-foreground/30">before you build</span>
             </h1>
-            <p className="max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground text-pretty mb-10">
-              The AI-powered co-founder that validates your business concept, analyzes market viability, and builds your GTM strategy—instantly.
+
+            <p data-reveal className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-10">
+              AI-powered analysis across 8 stages — market research, competitors,
+              monetization, MVP planning, and more. In minutes, not months.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button size="lg" className="h-12 px-8 text-base gap-2" asChild>
+
+            <div data-reveal className="flex flex-col sm:flex-row items-center justify-center gap-3 flex-wrap">
+              <Button size="lg" className="h-12 px-8 text-base gap-2 w-full sm:w-auto" asChild>
                 <Link href="/register">
-                  Validate My Idea for Free <ArrowRight className="h-4 w-4" />
+                  Analyze Your Idea Free <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" className="h-12 px-8 text-base bg-transparent" asChild>
-                <Link href="/features">View Sample Report</Link>
+              <Button size="lg" variant="outline" className="h-12 px-8 text-base w-full sm:w-auto" asChild>
+                <Link href="/features">See Example Report</Link>
               </Button>
             </div>
 
-            {/* Hero Metrics */}
-            <div className="mt-16 flex flex-wrap justify-center gap-6">
+            <p data-reveal className="text-xs text-muted-foreground mt-4">
+              No credit card required · Takes 3 minutes · 2,400+ ideas validated
+            </p>
+          </div>
+        </section>
+
+        {/* ── Stats ────────────────────────────────────────── */}
+        <section className="py-16 border-y border-border">
+          <div ref={statsRef} className="container px-4 max-w-4xl mx-auto">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {stats.map((stat) => (
-                <div key={stat.name} className="flex flex-col items-center bg-card/50 rounded-xl p-6 shadow-md w-40 backdrop-blur-sm border border-border/50">
-                  <stat.icon className="h-6 w-6 text-primary mb-2" />
-                  <div className="text-2xl font-bold text-foreground">
-                    <CountUp end={stat.value} duration={1.5} separator="," />+
-                  </div>
-                  <span className="text-sm text-muted-foreground">{stat.name}</span>
+                <div key={stat.label} data-reveal className="flex flex-col items-center text-center p-4 rounded-xl border bg-card">
+                  <span className="text-3xl md:text-4xl font-bold tabular-nums tracking-tight">{stat.value}</span>
+                  <span className="text-xs text-muted-foreground mt-1.5 font-medium">{stat.label}</span>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* Background Decoration */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl -z-10" />
         </section>
 
-        {/* Problem Statement Section */}
-        <section className="py-24 bg-card border-y border-border/50">
-          <div className="container px-4">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div>
-                <h2 className="text-3xl md:text-4xl font-bold mb-6">The Founder&apos;s Dilemma</h2>
-                <p className="text-muted-foreground text-lg mb-8">
-                  Building a startup is risky. Most fail not because they couldn&apos;t build the product, but because they built the <em>wrong</em> product.
-                </p>
-                <ul className="space-y-6">
-                  <li className="flex gap-4">
-                    <div className="h-10 w-10 shrink-0 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
-                      <Target className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg">Uncertainty & Doubt</h3>
-                      <p className="text-muted-foreground">Is this a real problem or just a hunch? Stop wasting weeks on guesswork.</p>
-                    </div>
-                  </li>
-                  <li className="flex gap-4">
-                    <div className="h-10 w-10 shrink-0 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
-                      <BarChart3 className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg">Analysis Paralysis</h3>
-                      <p className="text-muted-foreground">Spending months researching competitors instead of executing on your vision.</p>
-                    </div>
-                  </li>
-                  <li className="flex gap-4">
-                    <div className="h-10 w-10 shrink-0 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
-                      <Users className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg">Biased Feedback</h3>
-                      <p className="text-muted-foreground">Relying on friends who are too nice to tell you the harsh truth about your idea.</p>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-              <div className="relative h-full min-h-[400px] bg-muted/30 rounded-2xl border border-border overflow-hidden flex items-center justify-center">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
-                <div className="text-center p-8 relative z-10">
-                  <h3 className="text-2xl font-bold mb-2">Ideally...</h3>
-                  <p className="text-muted-foreground">Getting a &quot;No&quot; now saves you 6 months of life.</p>
-                  <p className="text-primary font-medium mt-2">Getting a &quot;Yes&quot; gives you the roadmap to a unicorn.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Value Proposition / Solution Section */}
+        {/* ── Features ─────────────────────────────────────── */}
         <section className="py-24">
-          <div className="container px-4 text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold mb-6">Meet Inceptrax: Your Objective Truth Engine</h2>
-            <p className="max-w-2xl mx-auto text-lg text-muted-foreground">
-              We cut through the noise. Using advanced AI, we subject your idea to rigorous market stress-tests in seconds.
-            </p>
-          </div>
-
-          <div className="container px-4 grid md:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Data-Driven Reality",
-                desc: "Analysis based on real-time market signals, not opinions. We validate against current trends and data.",
-                icon: BarChart3
-              },
-              {
-                title: "Instant Clarity",
-                desc: "Comprehensive 20+ page reports generated in under 60 seconds. Know your TAM, SAM, and SOM immediately.",
-                icon: Rocket
-              },
-              {
-                title: "Actionable Strategy",
-                desc: "Don't just get a score; get a plan. MVP features, pricing models, and acquisition channels tailored to you.",
-                icon: CheckCircle2
-              }
-            ].map((item, i) => (
-              <div key={i} className="bg-card border border-border rounded-xl p-8 hover:border-primary/50 transition-colors">
-                <div className="h-12 w-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-6">
-                  <item.icon className="h-6 w-6" />
+          <div className="container px-4 max-w-6xl mx-auto">
+            <div className="text-center mb-14">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">What you get</p>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything you need to validate fast</h2>
+              <p className="text-muted-foreground max-w-xl mx-auto">8 sequential AI stages built for founders who move fast and need accurate data — not opinions.</p>
+            </div>
+            <div ref={featuresRef} className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {features.map((f) => (
+                <div key={f.title} data-reveal className="rounded-xl border bg-card p-6 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
+                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-xl mb-4 group-hover:scale-110 transition-transform duration-200">
+                    {f.icon}
+                  </div>
+                  <h3 className="font-semibold text-base mb-2">{f.title}</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{f.desc}</p>
                 </div>
-                <h3 className="text-xl font-bold mb-3">{item.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* Social Proof */}
-        <section className="py-24 bg-muted/20">
-          <div className="container px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">Trusted by 5,000+ Modern Founders</h2>
-              <p className="text-muted-foreground">$40M+ in potential wasted development hours saved this year.</p>
+        {/* ── How It Works ─────────────────────────────────── */}
+        <section className="py-24 bg-muted/30 border-y border-border">
+          <div className="container px-4 max-w-5xl mx-auto">
+            <div className="text-center mb-14">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Simple process</p>
+              <h2 className="text-3xl md:text-4xl font-bold">How it works</h2>
             </div>
-
-            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-              <div className="bg-card p-8 rounded-2xl border border-border shadow-sm">
-                <p className="text-lg italic mb-6 text-foreground/80">&quot;Inceptrax saved me 6 months of dev time. It correctly identified a saturated market I was about to enter and suggested a pivot that got us funded.&quot;</p>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">SJ</div>
-                  <div>
-                    <p className="font-bold text-sm">Sarah J.</p>
-                    <p className="text-xs text-muted-foreground">Founder, TechFlow</p>
+            <div ref={stepsRef} className="grid md:grid-cols-3 gap-10 relative">
+              <div className="hidden md:block absolute top-8 left-[calc(16.67%+2rem)] right-[calc(16.67%+2rem)] h-px bg-border" />
+              {steps.map((step) => (
+                <div key={step.num} data-reveal className="relative flex flex-col items-center text-center gap-4">
+                  <div className="relative z-10 w-16 h-16 rounded-2xl bg-background border-2 border-border flex items-center justify-center shrink-0 shadow-sm">
+                    <span className="text-2xl font-bold text-foreground/50 font-mono">{step.num}</span>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-lg">{step.title}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">{step.desc}</p>
                   </div>
                 </div>
-              </div>
-              <div className="bg-card p-8 rounded-2xl border border-border shadow-sm">
-                <p className="text-lg italic mb-6 text-foreground/80">&quot;The MVP blueprint feature is insane. It prioritized my features better than my actual product manager. Essential for indie hackers.&quot;</p>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-secondary/20 flex items-center justify-center text-secondary font-bold">DK</div>
-                  <div>
-                    <p className="font-bold text-sm">David K.</p>
-                    <p className="text-xs text-muted-foreground">Indie Hacker</p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* CTA Section */}
+        {/* ── Testimonials ─────────────────────────────────── */}
         <section className="py-24">
-          <div className="container px-4">
-            <div className="relative rounded-3xl bg-primary px-8 py-16 text-center text-primary-foreground overflow-hidden shadow-2xl">
-              <div className="relative z-10 max-w-3xl mx-auto">
-                <h2 className="text-3xl md:text-5xl font-bold mb-6">Ready to validate your next big thing?</h2>
-                <p className="text-primary-foreground/80 text-lg mb-10">
-                  Join thousands of founders who use Inceptrax to turn concepts into companies.
-                </p>
-                <Button size="lg" variant="secondary" className="h-14 px-10 text-lg font-semibold shadow-lg hover:bg-background hover:text-foreground transition-all" asChild>
-                  <Link href="/register">Start Analysis Now</Link>
-                </Button>
-              </div>
-
-              {/* Background Glow */}
-              <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="container px-4 max-w-5xl mx-auto">
+            <div className="text-center mb-14">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Real founders</p>
+              <h2 className="text-3xl font-bold">Trusted by 5,000+ modern founders</h2>
+              <p className="text-muted-foreground mt-3">$40M+ in potential wasted development hours saved this year.</p>
             </div>
+            <div ref={socialRef} className="grid md:grid-cols-2 gap-6">
+              {testimonials.map((t) => (
+                <div key={t.name} data-reveal className="rounded-xl border bg-card p-6">
+                  <p className="text-foreground/80 text-base leading-relaxed italic mb-6">&ldquo;{t.quote}&rdquo;</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-foreground text-background flex items-center justify-center font-semibold text-sm">{t.initials}</div>
+                    <div>
+                      <p className="font-semibold text-sm">{t.name}</p>
+                      <p className="text-xs text-muted-foreground">{t.role}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Final CTA ────────────────────────────────────── */}
+        <section className="py-24 border-t border-border">
+          <div className="container px-4 max-w-3xl mx-auto text-center">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to validate your idea?</h2>
+            <p className="text-muted-foreground mb-10 text-lg max-w-md mx-auto">Stop guessing. Start building the right thing.</p>
+            <Button size="lg" className="h-12 px-10 text-base w-full sm:w-auto" asChild>
+              <Link href="/register">Start Free Analysis →</Link>
+            </Button>
+            <p className="text-xs text-muted-foreground mt-4">No credit card · Free to start · 3 minutes to insights</p>
           </div>
         </section>
       </main>

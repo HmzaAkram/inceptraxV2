@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trash2, Plus, ArrowRight, Loader2, Lightbulb, Search, Globe, Lock, Link2, Check, Download } from "lucide-react"
+import { Trash2, Plus, ArrowRight, Loader2, Lightbulb, Search, Globe, Lock, Link2, Check, Download, Sparkles, Presentation } from "lucide-react"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import JSZip from "jszip"
 import { saveAs } from "file-saver"
+import { ExportModal } from "@/components/export-modal"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -27,9 +28,10 @@ interface Idea {
     title: string;
     description: string;
     created_at: string;
-    validation_score: number;
+    overall_score: number;
     is_public: boolean;
     share_token: string | null;
+    ai_layers_count?: number;
 }
 
 export default function IdeasPage() {
@@ -40,9 +42,10 @@ export default function IdeasPage() {
     const [isTogglingVisibility, setIsTogglingVisibility] = useState<number | null>(null)
     const [copiedId, setCopiedId] = useState<number | null>(null)
     
-    // PDF Export states
+    // Export states
     const [isDownloading, setIsDownloading] = useState<number | null>(null)
     const [isExporting, setIsExporting] = useState(false)
+    const [exportModalId, setExportModalId] = useState<{ id: number; title: string } | null>(null)
 
     useEffect(() => {
         async function fetchIdeas() {
@@ -105,18 +108,30 @@ export default function IdeasPage() {
     const handleDownloadPdf = async (ideaId: number, title: string) => {
         setIsDownloading(ideaId)
         try {
-            const blob: Blob = await apiFetch(`/ideas/${ideaId}/download`)
+            const token = typeof window !== "undefined" ? localStorage.getItem("token") : null
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/ideas/${ideaId}/export/pdf`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                }
+            )
+            if (!res.ok) throw new Error("Export failed")
+            const blob = await res.blob()
             const url = window.URL.createObjectURL(blob)
-            const a = document.createElement('a')
+            const a = document.createElement("a")
             a.href = url
-            a.download = `${title.replace(/\s+/g, '-')}-Analysis.pdf`
+            a.download = `${title.replace(/\s+/g, "-")}-Analysis.pdf`
             document.body.appendChild(a)
             a.click()
             window.URL.revokeObjectURL(url)
             document.body.removeChild(a)
-            toast.success("Report downloaded successfully")
+            toast.success("PDF report downloaded!")
         } catch (error: any) {
-            toast.error(error.message || "Failed to download report (Make sure you validated it first)")
+            toast.error(error.message || "Failed to download PDF")
         } finally {
             setIsDownloading(null)
         }
@@ -134,7 +149,7 @@ export default function IdeasPage() {
             
             for (const idea of ideas) {
                 // Only try to export if it has a validation score (meaning a report exists)
-                if (idea.validation_score && idea.validation_score > 0) {
+                if (idea.overall_score && idea.overall_score > 0) {
                     try {
                         const blob: Blob = await apiFetch(`/ideas/${idea.id}/download`)
                         zip.file(`${idea.title.replace(/\s+/g, '-')}-Analysis.pdf`, blob)
@@ -168,12 +183,13 @@ export default function IdeasPage() {
     if (isLoading) {
         return (
             <div className="flex h-[60vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <Loader2 className="h-8 w-8 animate-spin text-foreground" />
             </div>
         )
     }
 
     return (
+        <>
         <div className="space-y-8 max-w-6xl mx-auto p-4 md:p-8">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
@@ -220,7 +236,7 @@ export default function IdeasPage() {
                                     <div className="flex items-center gap-1">
                                         <div className="text-right mr-3">
                                             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Score</div>
-                                            <div className="text-xl font-bold text-primary">{idea.validation_score || 0}%</div>
+                                            <div className="text-xl font-bold text-primary">{idea.overall_score || 0}%</div>
                                         </div>
 
                                         {/* Delete button */}
@@ -259,8 +275,15 @@ export default function IdeasPage() {
                                 <CardTitle className="text-xl text-foreground line-clamp-1 group-hover:text-primary transition-colors text-ellipsis overflow-hidden">
                                     {idea.title}
                                 </CardTitle>
-                                <div className="text-xs text-muted-foreground">
-                                    Created {new Date(idea.created_at).toLocaleDateString()}
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-xs text-muted-foreground">
+                                        Created {new Date(idea.created_at).toLocaleDateString()}
+                                    </span>
+                                    {(idea.ai_layers_count ?? 0) > 0 && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-violet-600 dark:text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full">
+                                            <Sparkles className="h-3 w-3" /> AI-Refined ✓
+                                        </span>
+                                    )}
                                 </div>
                             </CardHeader>
 
@@ -318,17 +341,30 @@ export default function IdeasPage() {
                                             View <ArrowRight className="h-4 w-4" />
                                         </Link>
                                     </Button>
-                                    {idea.validation_score && idea.validation_score > 0 ? (
-                                        <Button 
-                                            variant="secondary" 
-                                            size="icon"
-                                            className="h-10 w-10 rounded-xl"
-                                            onClick={() => handleDownloadPdf(idea.id, idea.title)}
-                                            disabled={isDownloading === idea.id}
-                                            title="Download PDF Report"
-                                        >
-                                            {isDownloading === idea.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                                        </Button>
+                                    {idea.overall_score && idea.overall_score > 0 ? (
+                                        <>
+                                            <Button
+                                                variant="secondary"
+                                                size="icon"
+                                                className="h-10 w-10 rounded-xl"
+                                                onClick={() => handleDownloadPdf(idea.id, idea.title)}
+                                                disabled={isDownloading === idea.id}
+                                                title="Download PDF Report"
+                                            >
+                                                {isDownloading === idea.id
+                                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                                    : <Download className="h-4 w-4" />}
+                                            </Button>
+                                            <Button
+                                                variant="secondary"
+                                                size="icon"
+                                                className="h-10 w-10 rounded-xl"
+                                                onClick={() => setExportModalId({ id: idea.id, title: idea.title })}
+                                                title="Download PPT Presentation"
+                                            >
+                                                <Presentation className="h-4 w-4" />
+                                            </Button>
+                                        </>
                                     ) : null}
                                 </div>
                             </CardContent>
@@ -345,5 +381,17 @@ export default function IdeasPage() {
                 )}
             </div>
         </div>
+
+        {/* PPT Export Modal */}
+        {exportModalId && (
+            <ExportModal
+                open={!!exportModalId}
+                onOpenChange={(open) => { if (!open) setExportModalId(null) }}
+                ideaId={exportModalId.id}
+                ideaTitle={exportModalId.title}
+            />
+        )}
+        </>
     )
 }
+

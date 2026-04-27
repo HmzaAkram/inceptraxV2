@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Sparkles, ArrowLeft, Loader2 } from "lucide-react"
+import { Sparkles, ArrowLeft, Loader2, Eye, EyeOff } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
 import { toast } from "sonner"
@@ -13,27 +13,57 @@ import { toast } from "sonner"
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { login } = useAuth()
 
+  // Inline validation
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+
+  const validateField = (field: string, value: string) => {
+    const newErrors = { ...errors }
+    switch (field) {
+      case "email":
+        if (!value.trim()) newErrors.email = "Email is required"
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) newErrors.email = "Enter a valid email"
+        else delete newErrors.email
+        break
+      case "password":
+        if (!value) newErrors.password = "Password is required"
+        else delete newErrors.password
+        break
+    }
+    setErrors(newErrors)
+    setTouched(prev => ({ ...prev, [field]: true }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+    e.preventDefault()
+
+    validateField("email", email)
+    validateField("password", password)
+    setTouched({ email: true, password: true })
+
+    if (!email.trim() || !password) return
+
+    setIsLoading(true)
 
     try {
       const data = await apiFetch("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
-      });
+      })
 
-      login(data.token, data.user);
-      toast.success("Login successful!");
+      login(data.user)
+      toast.success("Login successful!")
     } catch (error: any) {
-      toast.error(error.message || "Failed to login");
+      // Never clear form on error
+      toast.error(error.message || "Invalid credentials")
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
 
   return (
@@ -57,8 +87,8 @@ export default function LoginPage() {
 
         <div className="relative z-10 p-8 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20">
           <p className="italic text-lg mb-4">
-            "Inceptrax saved us months of wasted effort. We validated our concept in minutes and pivoted before building
-            the wrong thing."
+            &ldquo;Inceptrax saved us months of wasted effort. We validated our concept in minutes and pivoted before building
+            the wrong thing.&rdquo;
           </p>
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-white/20" />
@@ -89,39 +119,57 @@ export default function LoginPage() {
             <p className="text-muted-foreground">Enter your credentials to access your dashboard</p>
           </div>
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-2">
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <div className="space-y-1.5">
               <Label htmlFor="email">Email address</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="name@company.com"
                 required
-                className="h-11 rounded-xl"
+                className={`h-11 rounded-xl ${touched.email && errors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); if (touched.email) validateField("email", e.target.value) }}
+                onBlur={() => validateField("email", email)}
               />
+              {touched.email && errors.email && (
+                <p className="text-xs text-red-500">{errors.email}</p>
+              )}
             </div>
-            <div className="space-y-2">
+
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
                 <Link
                   href="/forgot-password"
-                  name="forgot-password-link"
                   className="text-sm font-medium text-primary hover:underline"
                 >
                   Forgot password?
                 </Link>
               </div>
-              <Input
-                id="password"
-                type="password"
-                required
-                className="h-11 rounded-xl"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  className={`h-11 rounded-xl pr-10 ${touched.password && errors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); if (touched.password) validateField("password", e.target.value) }}
+                  onBlur={() => validateField("password", password)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {touched.password && errors.password && (
+                <p className="text-xs text-red-500">{errors.password}</p>
+              )}
             </div>
+
             <Button type="submit" className="w-full h-11 rounded-xl text-base font-semibold" disabled={isLoading}>
               {isLoading ? (
                 <>
@@ -134,26 +182,8 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline" className="h-11 rounded-xl bg-transparent">
-              Google
-            </Button>
-            <Button variant="outline" className="h-11 rounded-xl bg-transparent">
-              GitHub
-            </Button>
-          </div>
-
           <p className="text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/register" className="font-semibold text-primary hover:underline">
               Sign up for free
             </Link>

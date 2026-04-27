@@ -1,75 +1,57 @@
-Validate the following startup idea:
-Title: {title}
+You are performing IDEA VALIDATION for a specific startup idea.
+
+=== IDEA CONTEXT (ANALYZE SPECIFICALLY FOR THIS — DO NOT USE GENERIC TEMPLATES) ===
+Idea Title: {title}
 Description: {description}
-Problem: {problem}
-Solution: {solution}
-Target Audience: {audience}
-Market: {market}
+Industry: {industry}
+Target Market: {target_market}
+Target Audience: {target_audience}
+Problem Being Solved: {problem}
+Proposed Solution: {solution}
+Current Stage: {stage}
+=== END IDEA CONTEXT ===
 
-Provide a detailed analysis including:
-1. Overall Validation Score (0-100)
-2. Market Demand (High, Medium, Low) and Score (0-100)
-3. Problem Severity (None, Mild, Severe) and Score (0-100)
-4. Growth Potential (Low, Moderate, Strong) and Score (0-100)
-5. 4 Key Strengths
-6. 4 Key Risks & Challenges
-7. A concise AI Recommendation (Executive Summary)
-8. Market Research (TAM, SAM, SOM)
-9. Competitor Analysis (at least 3 competitors with strengths and weaknesses)
-10. Monetization Strategy (Tiered pricing, model, conversion logic)
-11. MVP Blueprint (3-5 core AI features, capabilities used, priority)
-12. Go-To-Market Strategy (Acquisition channels, messaging, 1,000 users strategy)
+{previous_context}
 
-CRITICAL OUTPUT INSTRUCTION: Use simple, non-technical words. avoid tough vocabularies. The analysis must be easily understood by anyone.
+TASK: Validate this SPECIFIC startup idea. Assess the problem severity, solution strength, and overall feasibility. Be honest — look for both strengths and flaws.
 
-Return the response in the following JSON format:
+Return the response in this EXACT JSON format:
 {{
-    "overall_score": 85,
+    "score": 0-100,
+    "problem_analysis": {{
+        "severity": "Critical / Significant / Moderate / Minor",
+        "evidence": "Why this problem matters, specific to this idea",
+        "affected_population": "Who suffers from this problem and how many"
+    }},
+    "solution_analysis": {{
+        "uniqueness": "High / Medium / Low",
+        "feasibility": "High / Medium / Low",
+        "evidence": "Why this solution works or doesn't"
+    }},
     "scores": {{
-        "market_demand": {{ "label": "High", "value": 88 }},
-        "problem_severity": {{ "label": "Severe", "value": 75 }},
-        "growth_potential": {{ "label": "Strong", "value": 92 }}
+        "market_demand": {{ "label": "High/Medium/Low", "value": 0-100 }},
+        "problem_severity": {{ "label": "Severe/Moderate/Mild", "value": 0-100 }},
+        "growth_potential": {{ "label": "Strong/Moderate/Low", "value": 0-100 }}
     }},
-    "strengths": ["...", "...", "...", "..."],
-    "risks": ["...", "...", "...", "..."],
-    "recommendation": "...",
-    "market_research": {{
-        "tam": "$12.4B",
-        "sam": "$2.8B",
-        "som": "$450M",
-        "trends": [
-            {{ "title": "...", "description": "..." }},
-            ...
-        ],
-        "segments": [
-            {{ "name": "...", "description": "...", "percentage": "45%", "wtp": "High" }},
-            ...
-        ]
-    }},
-    "competitors": [
-        {{ "name": "...", "type": "Direct/Indirect", "threat": "High/Medium/Low", "strengths": ["...", "..."], "weaknesses": ["...", "..."] }},
-        ...
+    "strengths": [
+        "Strength 1 specific to this idea",
+        "Strength 2",
+        "Strength 3",
+        "Strength 4"
     ],
-    "monetization": {{
-        "pricing_model": "Freemium / Subscription / Usage-based",
-        "recommended_strategy": "...",
-        "plans": [
-            {{ "name": "Free / Pro / Team", "price": "$0 / $49/mo / Custom", "target": "...", "features": ["...", "..."] }},
-            ...
-        ],
-        "conversion_logic": "..."
-    }},
-    "mvp_blueprint": [
-        {{ "feature_name": "...", "ai_capability": "LLM / Embeddings / Reasoning", "problem_solved": "...", "priority": "Must-have / Later", "business_value": "High/Medium" }},
-        ...
+    "risks": [
+        "Risk 1 specific to this idea",
+        "Risk 2",
+        "Risk 3",
+        "Risk 4"
     ],
-    "gtm_strategy": {{
-        "acquisition_channels": [
-            {{ "channel": "...", "strategy": "..." }},
-            ...
-        ],
-        "messaging": {{ "hook": "...", "value_prop": "..." }},
-        "funnel_stages": {{ "awareness": "...", "activation": "...", "conversion": "..." }},
-        "early_traction": "First 1,000 users strategy..."
-    }}
+    "recommendation": "2-3 sentence executive recommendation for the founder",
+    "key_insight": "One paragraph about the most important validation finding"
 }}
+
+RULES:
+- Be specific to THIS idea — never give generic advice
+- Be honest about weaknesses — founders need the truth
+- All strengths and risks must directly relate to the provided idea details
+- Use simple, non-technical language that anyone can understand
+- Return ONLY valid JSON, no markdown

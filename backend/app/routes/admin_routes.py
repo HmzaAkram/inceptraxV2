@@ -25,11 +25,6 @@ def get_admin_stats(current_user):
     
     # Total API Credits used across all users
     total_api_used = db.session.query(db.func.sum(User.api_credits_used)).scalar() or 0
-    
-    # For demo purposes, we'll assume a fixed budget for Gemini, e.g., 10000 credits
-    # In a real scenario, this might come from an API or config
-    gemini_budget = 10000
-    gemini_remaining = max(0, gemini_budget - total_api_used)
 
     return jsonify({
         "total_users": total_users,
@@ -38,8 +33,8 @@ def get_admin_stats(current_user):
         "total_visitors": stats.total_visitors,
         "api_usage": {
             "used": total_api_used,
-            "remaining": gemini_remaining,
-            "total_budget": gemini_budget
+            "remaining": "unlimited",
+            "total_budget": "unlimited"
         }
     }), 200
 

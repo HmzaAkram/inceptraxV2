@@ -30,7 +30,7 @@ export default function GTMStrategyPage() {
     if (isLoading) {
         return (
             <div className="flex h-[60vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <Loader2 className="h-8 w-8 animate-spin text-foreground" />
             </div>
         )
     }
@@ -143,9 +143,9 @@ export default function GTMStrategyPage() {
                         <ArrowLeft className="h-4 w-4" /> Previous
                     </Button>
                 </Link>
-                <Link href="/dashboard">
-                    <Button className="gap-2 pl-6 pr-6 bg-green-600 hover:bg-green-700" size="lg">
-                        Finish Analysis <CheckCircle className="h-4 w-4" />
+                <Link href={`/dashboard/idea/${params.id}/investor`}>
+                    <Button className="gap-2 pl-6 pr-6" size="lg">
+                        Next: Investor Pitches <ArrowRight className="h-4 w-4" />
                     </Button>
                 </Link>
             </div>

@@ -1,5 +1,5 @@
 from flask import Blueprint, request
-from app.models.user_model import User, Message
+from app.models.user_model import User, Message, BlockedUser, UserReport
 from app.middleware.auth_middleware import token_required
 from app.utils.response_formatter import ResponseFormatter
 from app import db
@@ -12,8 +12,13 @@ cofounder_bp = Blueprint('cofounder', __name__)
 @token_required
 def get_profiles(current_user):
     skills_query = request.args.get('skills', '').lower()
-    
-    query = User.query.filter(User.is_discoverable == True, User.id != current_user.id)
+
+    # Get blocked user IDs (both directions)
+    blocked_ids = [b.blocked_id for b in BlockedUser.query.filter_by(blocker_id=current_user.id).all()]
+    blocked_by_ids = [b.blocker_id for b in BlockedUser.query.filter_by(blocked_id=current_user.id).all()]
+    exclude_ids = set(blocked_ids + blocked_by_ids + [current_user.id])
+
+    query = User.query.filter(User.is_discoverable == True, ~User.id.in_(exclude_ids))
     
     if skills_query:
         query = query.filter(User.skills.ilike(f'%{skills_query}%'))
@@ -141,3 +146,65 @@ def mark_read(current_user, user_id):
         db.session.commit()
         
     return ResponseFormatter.success(message="Messages marked as read")
+
+
+@cofounder_bp.route('/block/<int:user_id>', methods=['POST'])
+@token_required
+def block_user(current_user, user_id):
+    """Block a user — they won't appear in profiles or be able to message you."""
+    if user_id == current_user.id:
+        return ResponseFormatter.error("Cannot block yourself")
+
+    existing = BlockedUser.query.filter_by(
+        blocker_id=current_user.id, blocked_id=user_id
+    ).first()
+
+    if existing:
+        return ResponseFormatter.error("User already blocked")
+
+    block = BlockedUser(blocker_id=current_user.id, blocked_id=user_id)
+    db.session.add(block)
+    db.session.commit()
+
+    return ResponseFormatter.success(message="User blocked successfully")
+
+
+@cofounder_bp.route('/unblock/<int:user_id>', methods=['POST'])
+@token_required
+def unblock_user(current_user, user_id):
+    """Unblock a previously blocked user."""
+    block = BlockedUser.query.filter_by(
+        blocker_id=current_user.id, blocked_id=user_id
+    ).first()
+
+    if not block:
+        return ResponseFormatter.error("User is not blocked")
+
+    db.session.delete(block)
+    db.session.commit()
+
+    return ResponseFormatter.success(message="User unblocked")
+
+
+@cofounder_bp.route('/report/<int:user_id>', methods=['POST'])
+@token_required
+def report_user(current_user, user_id):
+    """Report a user for inappropriate behavior."""
+    if user_id == current_user.id:
+        return ResponseFormatter.error("Cannot report yourself")
+
+    data = request.get_json(silent=True) or {}
+    reason = data.get('reason', '').strip()
+
+    if not reason or len(reason) < 10:
+        return ResponseFormatter.error("Please provide a reason (at least 10 characters)")
+
+    report = UserReport(
+        reporter_id=current_user.id,
+        reported_id=user_id,
+        reason=reason[:500]  # Cap at 500 chars
+    )
+    db.session.add(report)
+    db.session.commit()
+
+    return ResponseFormatter.success(message="Report submitted. Our team will review it within 24 hours.")

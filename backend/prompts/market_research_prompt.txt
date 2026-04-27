@@ -1,0 +1,42 @@
+You are analyzing the MARKET RESEARCH for a specific startup idea.
+
+=== IDEA CONTEXT (ANALYZE SPECIFICALLY FOR THIS — DO NOT USE GENERIC TEMPLATES) ===
+Idea Title: {title}
+Description: {description}
+Industry: {industry}
+Target Market: {target_market}
+Target Audience: {target_audience}
+Problem Being Solved: {problem}
+Proposed Solution: {solution}
+Current Stage: {stage}
+=== END IDEA CONTEXT ===
+
+{previous_context}
+
+{research_data}
+
+TASK: Perform comprehensive market research for THIS SPECIFIC idea in THIS SPECIFIC industry.
+
+Return the response in this EXACT JSON format:
+{{
+    "tam": "Total Addressable Market with dollar amount and year",
+    "sam": "Serviceable Addressable Market with dollar amount",
+    "som": "Serviceable Obtainable Market with dollar amount",
+    "cagr": "Compound Annual Growth Rate percentage",
+    "score": 0-100,
+    "trends": [
+        {{ "title": "Trend name", "description": "How this trend affects THIS idea", "impact": "High/Medium/Low" }},
+        {{ "title": "...", "description": "...", "impact": "..." }}
+    ],
+    "segments": [
+        {{ "name": "Segment name", "description": "Description specific to this idea", "percentage": "XX%", "wtp": "High/Medium/Low" }}
+    ],
+    "key_insight": "One paragraph synthesizing the most important market finding for this specific idea"
+}}
+
+RULES:
+- All numbers must be realistic and specific to the {industry} industry
+- Use recent data (2024-2025) where possible
+- If real research data is provided above, incorporate it — do NOT ignore it
+- Use simple, non-technical language
+- Return ONLY valid JSON, no markdown

@@ -21,6 +21,12 @@ import {
   TrendingUp,
   AlertCircle,
   RefreshCw,
+  Users,
+  DollarSign,
+  FileText,
+  Trophy,
+  PartyPopper,
+  Target,
 } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -48,27 +54,58 @@ interface ToolRecommendation {
   use_case: string
 }
 
-interface ActionWeek {
-  week: number
+interface Community {
+  name: string
+  type: string
+  url: string
+  members: string
+  relevance: string
+}
+
+interface Investor {
+  name: string
+  type: string
   focus: string
-  tasks: string[]
+  stage: string
+  url: string
+}
+
+interface Template {
+  name: string
+  type: string
+  url: string
+  description: string
+}
+
+interface Milestone {
+  phase: string
+  duration: string
+  title: string
+  goals: string[]
+  kpis: string[]
+  completion_message: string
 }
 
 interface HubData {
   research_links: ResearchLink[]
   execution_checklist: ChecklistItem[]
   tool_recommendations: ToolRecommendation[]
-  action_plan: ActionWeek[]
+  communities?: Community[]
+  investors?: Investor[]
+  templates?: Template[]
+  milestones?: Milestone[]
+  // Legacy field (backward compat)
+  action_plan?: { week: number; focus: string; tasks: string[] }[]
 }
 
 // ─────────────────────────────────────────────
 // Section Tab configuration
 // ─────────────────────────────────────────────
 const TABS = [
-  { id: "research",  label: "Deep Dive Research",    icon: BookOpen },
-  { id: "checklist", label: "Execution Checklist",   icon: CheckCircle2 },
-  { id: "tools",    label: "Tool Recommendations",   icon: Wrench },
-  { id: "plan",     label: "Action Plan",            icon: Calendar },
+  { id: "research",  label: "Deep Research",       icon: BookOpen },
+  { id: "checklist", label: "Execution Checklist",  icon: CheckCircle2 },
+  { id: "resources", label: "Resources",            icon: Wrench },
+  { id: "progress",  label: "90-Day Tracker",       icon: Trophy },
 ] as const
 
 type TabId = typeof TABS[number]["id"]
@@ -77,7 +114,14 @@ type TabId = typeof TABS[number]["id"]
 const PHASE_CONFIG: Record<string, { color: string; bg: string; dot: string }> = {
   Validation: { color: "text-blue-600 dark:text-blue-400",  bg: "bg-blue-50 dark:bg-blue-950/30",  dot: "bg-blue-500" },
   MVP:        { color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/30", dot: "bg-violet-500" },
+  Build:      { color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/30", dot: "bg-violet-500" },
   Growth:     { color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/30", dot: "bg-emerald-500" },
+}
+
+const MILESTONE_COLORS: Record<string, { bg: string; border: string; icon: string }> = {
+  Validation: { bg: "bg-blue-500/10", border: "border-blue-500/30", icon: "text-blue-500" },
+  Build:      { bg: "bg-violet-500/10", border: "border-violet-500/30", icon: "text-violet-500" },
+  Growth:     { bg: "bg-emerald-500/10", border: "border-emerald-500/30", icon: "text-emerald-500" },
 }
 
 // ─────────────────────────────────────────────
@@ -92,12 +136,15 @@ export default function ResearchHubPage() {
   const [error, setError]       = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabId>("research")
   const [checked, setChecked]   = useState<Record<string, boolean>>({})
+  const [completedPhases, setCompletedPhases] = useState<Record<string, boolean>>({})
 
   // ── Load persisted checkbox state ──────────
   useEffect(() => {
     if (!ideaId) return
     const stored = localStorage.getItem(`hub-checklist-${ideaId}`)
     if (stored) setChecked(JSON.parse(stored))
+    const storedPhases = localStorage.getItem(`hub-phases-${ideaId}`)
+    if (storedPhases) setCompletedPhases(JSON.parse(storedPhases))
   }, [ideaId])
 
   // ── Fetch / generate hub data ───────────────
@@ -129,6 +176,15 @@ export default function ResearchHubPage() {
     })
   }
 
+  // ── Mark milestone phase complete ───────
+  const togglePhaseComplete = (phase: string) => {
+    setCompletedPhases(prev => {
+      const next = { ...prev, [phase]: !prev[phase] }
+      localStorage.setItem(`hub-phases-${ideaId}`, JSON.stringify(next))
+      return next
+    })
+  }
+
   // ─────────────────────────────────────────────
   // Loading State
   // ─────────────────────────────────────────────
@@ -144,11 +200,11 @@ export default function ResearchHubPage() {
         <div className="text-center space-y-2">
           <p className="font-semibold text-foreground">Generating your Research Hub…</p>
           <p className="text-sm text-muted-foreground max-w-xs">
-            Our AI is curating resources, tools, and an action plan specific to your idea. This takes about 15 seconds.
+            Our AI is curating resources, tools, and a 90-day plan specific to your idea.
           </p>
         </div>
         <div className="flex gap-2">
-          {["Deep Dive", "Checklist", "Tools", "Plan"].map((label, i) => (
+          {["Research", "Checklist", "Resources", "Milestones"].map((label, i) => (
             <div
               key={label}
               className="h-1.5 w-16 rounded-full bg-muted overflow-hidden"
@@ -193,6 +249,11 @@ export default function ResearchHubPage() {
   const totalDone  = hub.execution_checklist.filter((item, i) => checked[`${item.phase}-${byPhase(item.phase).indexOf(item)}`]).length
   const totalSteps = hub.execution_checklist.length
 
+  const communities = hub.communities || []
+  const investors = hub.investors || []
+  const templates = hub.templates || []
+  const milestones = hub.milestones || []
+
   // ─────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────
@@ -218,10 +279,7 @@ export default function ResearchHubPage() {
           variant="outline"
           size="sm"
           className="gap-2 shrink-0"
-          onClick={() => {
-            // Clear cache hint by removing from analysis — just re-fetch (server handles cache)
-            fetchHub(true)
-          }}
+          onClick={() => fetchHub(true)}
         >
           <RefreshCw className="h-3.5 w-3.5" />
           Refresh Hub
@@ -233,8 +291,8 @@ export default function ResearchHubPage() {
         {[
           { label: "Research Links",  value: hub.research_links.length,        icon: BookOpen,   color: "text-blue-500" },
           { label: "Checklist Steps", value: `${totalDone}/${totalSteps}`,     icon: CheckCircle2, color: "text-violet-500" },
-          { label: "Curated Tools",   value: hub.tool_recommendations.length,  icon: Wrench,     color: "text-amber-500" },
-          { label: "Week Sprint",     value: `${hub.action_plan.length} Weeks`, icon: Calendar,  color: "text-emerald-500" },
+          { label: "Resources",       value: (hub.tool_recommendations.length + communities.length + investors.length + templates.length),  icon: Wrench,     color: "text-amber-500" },
+          { label: "Milestones",      value: milestones.length > 0 ? `${Object.keys(completedPhases).filter(k => completedPhases[k]).length}/${milestones.length}` : "3 Phases", icon: Trophy,  color: "text-emerald-500" },
         ].map(stat => (
           <div
             key={stat.label}
@@ -339,6 +397,7 @@ export default function ResearchHubPage() {
             const items  = byPhase(phase)
             const prog   = phaseProgress(phase)
             const cfg    = PHASE_CONFIG[phase]
+            if (!cfg) return null
             return (
               <div key={phase} className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -395,124 +454,290 @@ export default function ResearchHubPage() {
       )}
 
       {/* ═══════════════════════════════════════════
-          Section: Tool Recommendations
+          Section: Resources (Tools + Communities + Investors + Templates)
       ═══════════════════════════════════════════ */}
-      {activeTab === "tools" && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Wrench className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold text-foreground">Tool Recommendations</h2>
-            <span className="text-sm text-muted-foreground ml-1">— Handpicked for your idea</span>
+      {activeTab === "resources" && (
+        <div className="space-y-8">
+          {/* Tools */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Wrench className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">Tools</h2>
+              <Badge variant="secondary" className="text-xs">{hub.tool_recommendations.length}</Badge>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {hub.tool_recommendations.map((tool, i) => (
+                <Card key={i} className="border-border hover:border-primary/30 hover:shadow-md transition-all duration-200 overflow-hidden group">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <Badge variant="secondary" className="text-xs mb-2 font-medium">
+                          {tool.category}
+                        </Badge>
+                        <CardTitle className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                          {tool.name}
+                        </CardTitle>
+                      </div>
+                      <div className="p-1.5 rounded-lg bg-muted mt-1 shrink-0">
+                        <Zap className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0 space-y-3">
+                    <p className="text-xs text-muted-foreground leading-relaxed">{tool.use_case}</p>
+                    <a href={tool.url} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
+                        Open Tool <ExternalLink className="h-3 w-3" />
+                      </Button>
+                    </a>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {hub.tool_recommendations.map((tool, i) => (
-              <Card key={i} className="border-border hover:border-primary/30 hover:shadow-md transition-all duration-200 overflow-hidden group">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <Badge variant="secondary" className="text-xs mb-2 font-medium">
-                        {tool.category}
-                      </Badge>
-                      <CardTitle className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
-                        {tool.name}
-                      </CardTitle>
-                    </div>
-                    <div className="p-1.5 rounded-lg bg-muted mt-1 shrink-0">
-                      <Zap className="h-3.5 w-3.5 text-muted-foreground" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0 space-y-3">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {tool.use_case}
-                  </p>
+
+          {/* Communities */}
+          {communities.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-500" />
+                <h2 className="text-lg font-semibold text-foreground">Communities</h2>
+                <Badge variant="secondary" className="text-xs">{communities.length}</Badge>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {communities.map((c, i) => (
                   <a
-                    href={tool.url}
+                    key={i}
+                    href={c.url}
                     target="_blank"
                     rel="noopener noreferrer"
+                    className="group flex items-start gap-3 p-4 rounded-xl border border-border bg-card hover:border-blue-500/30 hover:shadow-md transition-all"
                   >
-                    <Button variant="outline" size="sm" className="w-full gap-2 text-xs group-hover:border-primary/40 group-hover:text-primary transition-colors">
-                      Open Tool
-                      <ExternalLink className="h-3 w-3" />
-                    </Button>
+                    <div className="p-2 rounded-lg bg-blue-500/10 shrink-0">
+                      <Users className="h-4 w-4 text-blue-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-sm text-foreground group-hover:text-blue-600 transition-colors">{c.name}</h3>
+                        <Badge variant="outline" className="text-[10px] shrink-0">{c.type}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{c.members} members</p>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{c.relevance}</p>
+                    </div>
+                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-blue-500 shrink-0" />
                   </a>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          {hub.tool_recommendations.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-8">No tool recommendations available.</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Investors */}
+          {investors.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-emerald-500" />
+                <h2 className="text-lg font-semibold text-foreground">Investors</h2>
+                <Badge variant="secondary" className="text-xs">{investors.length}</Badge>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {investors.map((inv, i) => (
+                  <a
+                    key={i}
+                    href={inv.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-start gap-3 p-4 rounded-xl border border-border bg-card hover:border-emerald-500/30 hover:shadow-md transition-all"
+                  >
+                    <div className="p-2 rounded-lg bg-emerald-500/10 shrink-0">
+                      <DollarSign className="h-4 w-4 text-emerald-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-sm text-foreground group-hover:text-emerald-600 transition-colors">{inv.name}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="text-[10px]">{inv.type}</Badge>
+                        <Badge variant="outline" className="text-[10px]">{inv.stage}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{inv.focus}</p>
+                    </div>
+                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-emerald-500 shrink-0" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Templates */}
+          {templates.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-amber-500" />
+                <h2 className="text-lg font-semibold text-foreground">Templates</h2>
+                <Badge variant="secondary" className="text-xs">{templates.length}</Badge>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {templates.map((t, i) => (
+                  <a
+                    key={i}
+                    href={t.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex flex-col p-4 rounded-xl border border-border bg-card hover:border-amber-500/30 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <Badge variant="secondary" className="text-[10px] font-medium">{t.type}</Badge>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-amber-500" />
+                    </div>
+                    <h3 className="font-semibold text-sm text-foreground group-hover:text-amber-600 transition-colors">{t.name}</h3>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{t.description}</p>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {hub.tool_recommendations.length === 0 && communities.length === 0 && investors.length === 0 && templates.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-8">No resources available.</p>
           )}
         </div>
       )}
 
       {/* ═══════════════════════════════════════════
-          Section: Action Plan
+          Section: 90-Day Progress Tracker (3-Phase Milestones)
       ═══════════════════════════════════════════ */}
-      {activeTab === "plan" && (
-        <div className="space-y-4">
+      {activeTab === "progress" && (
+        <div className="space-y-6">
           <div className="flex items-center gap-2 mb-2">
-            <Calendar className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold text-foreground">8-Week Action Plan</h2>
-            <span className="text-sm text-muted-foreground ml-1">— Sprint-based execution roadmap</span>
+            <Trophy className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-semibold text-foreground">90-Day Progress Tracker</h2>
+            <span className="text-sm text-muted-foreground ml-1">— 3-phase milestone roadmap</span>
           </div>
 
-          <div className="relative">
-            {/* Vertical timeline line */}
-            <div className="absolute left-[22px] top-4 bottom-4 w-px bg-border" />
-
-            <div className="space-y-4">
-              {hub.action_plan.map((week, i) => {
-                const isEven    = i % 2 === 0
-                const dotColors = ["bg-blue-500", "bg-violet-500", "bg-emerald-500", "bg-amber-500"]
-                const dotColor  = dotColors[i % dotColors.length]
-                return (
-                  <div key={week.week} className="flex gap-5">
-                    {/* Timeline dot */}
-                    <div className="relative shrink-0 flex flex-col items-center" style={{ width: 44 }}>
-                      <div className={cn(
-                        "w-5 h-5 rounded-full border-2 border-background z-10 flex items-center justify-center shadow-sm",
-                        dotColor
-                      )}>
-                        <span className="text-[9px] text-white font-bold">{week.week}</span>
-                      </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 pb-2">
-                      <div className="p-4 rounded-xl border border-border bg-card hover:border-primary/20 transition-colors">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Badge variant="outline" className="text-xs font-semibold border-border">
-                            Week {week.week}
-                          </Badge>
-                          <span className="text-sm font-semibold text-foreground">{week.focus}</span>
-                        </div>
-                        <div className="space-y-1.5">
-                          {(week.tasks || []).map((task, j) => (
-                            <div key={j} className="flex items-start gap-2">
-                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-                              <span className="text-xs text-muted-foreground leading-relaxed">{task}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+          {/* Phase overview bar */}
+          <div className="p-4 rounded-xl border border-border bg-card">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-sm font-medium text-foreground">Overall Progress</span>
+              <span className="text-sm font-bold text-primary">
+                {Object.keys(completedPhases).filter(k => completedPhases[k]).length}/{milestones.length || 3} phases
+              </span>
+            </div>
+            <div className="flex gap-2">
+              {(milestones.length > 0 ? milestones : [
+                { phase: "Validation", duration: "Day 1-30", title: "Validate", goals: [], kpis: [], completion_message: "" },
+                { phase: "Build", duration: "Day 31-60", title: "Build", goals: [], kpis: [], completion_message: "" },
+                { phase: "Growth", duration: "Day 61-90", title: "Grow", goals: [], kpis: [], completion_message: "" },
+              ]).map((m, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex-1 h-3 rounded-full transition-all",
+                    completedPhases[m.phase]
+                      ? MILESTONE_COLORS[m.phase]?.bg || "bg-primary"
+                      : "bg-muted"
+                  )}
+                  style={{
+                    background: completedPhases[m.phase]
+                      ? i === 0 ? "rgb(59, 130, 246)" : i === 1 ? "rgb(139, 92, 246)" : "rgb(16, 185, 129)"
+                      : undefined
+                  }}
+                />
+              ))}
             </div>
           </div>
 
-          {hub.action_plan.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-8">No action plan available.</p>
+          {/* Milestone Cards */}
+          <div className="space-y-6">
+            {milestones.map((milestone, i) => {
+              const isComplete = !!completedPhases[milestone.phase]
+              const colors = MILESTONE_COLORS[milestone.phase] || MILESTONE_COLORS.Validation
+              return (
+                <Card key={i} className={cn(
+                  "border-2 overflow-hidden transition-all",
+                  isComplete ? "border-border/50 opacity-80" : colors.border
+                )}>
+                  <CardHeader className={cn("pb-3", colors.bg)}>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className="text-xs font-semibold">{milestone.duration}</Badge>
+                          <Badge className={cn("text-xs", isComplete ? "bg-green-500" : "bg-muted text-muted-foreground")}>
+                            {isComplete ? "✓ Complete" : "In Progress"}
+                          </Badge>
+                        </div>
+                        <CardTitle className="text-xl">{milestone.title}</CardTitle>
+                        <p className="text-sm text-muted-foreground font-medium mt-0.5">{milestone.phase} Phase</p>
+                      </div>
+                      <Button
+                        variant={isComplete ? "outline" : "default"}
+                        size="sm"
+                        className="gap-2 shrink-0"
+                        onClick={() => togglePhaseComplete(milestone.phase)}
+                      >
+                        {isComplete ? (
+                          <><CheckCircle2 className="h-4 w-4" /> Completed</>
+                        ) : (
+                          <><Target className="h-4 w-4" /> Mark Complete</>
+                        )}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-5 space-y-5">
+                    {/* Goals */}
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Goals</h4>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {milestone.goals.map((goal, j) => (
+                          <div key={j} className="flex items-start gap-2.5 p-2.5 rounded-lg bg-muted/30">
+                            <ChevronRight className={cn("h-4 w-4 shrink-0 mt-0.5", colors.icon)} />
+                            <span className="text-sm text-foreground">{goal}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* KPIs */}
+                    {milestone.kpis && milestone.kpis.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Key Metrics (KPIs)</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {milestone.kpis.map((kpi, j) => (
+                            <Badge key={j} variant="outline" className="text-xs font-medium py-1.5 px-3">
+                              {kpi}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Completion message (shown when phase is marked complete) */}
+                    {isComplete && milestone.completion_message && (
+                      <div className="p-4 rounded-xl bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/30 flex items-start gap-3">
+                        <PartyPopper className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-green-700 dark:text-green-400 mb-0.5">Phase Complete! 🎉</p>
+                          <p className="text-sm text-green-600 dark:text-green-400/80">{milestone.completion_message}</p>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+
+          {milestones.length === 0 && (
+            <div className="text-center py-12 space-y-3">
+              <Trophy className="h-10 w-10 text-muted-foreground mx-auto" />
+              <p className="font-semibold text-foreground">No milestones generated yet</p>
+              <p className="text-sm text-muted-foreground">Try refreshing the hub to generate your 90-day roadmap.</p>
+            </div>
           )}
 
-          {/* Final CTA */}
+          {/* CTA to checklist */}
           <div className="mt-8 p-5 rounded-xl border border-dashed border-border bg-muted/20 text-center space-y-2">
             <TrendingUp className="h-8 w-8 text-primary mx-auto" />
-            <p className="font-semibold text-foreground">Ready to Execute?</p>
+            <p className="font-semibold text-foreground">Track Daily Progress</p>
             <p className="text-sm text-muted-foreground">
-              Start with Week 1 and check items off in the Execution Checklist as you go. Your progress is automatically saved.
+              Use the Execution Checklist to track your daily tasks within each phase.
             </p>
             <Button
               size="sm"

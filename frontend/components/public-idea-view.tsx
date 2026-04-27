@@ -14,6 +14,7 @@ import { IdeaComments } from "@/components/idea-comments"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { ExpandableText } from "@/components/ui/expandable-text"
+import Link from "next/link"
 
 interface PublicIdeaViewProps {
   idea: any
@@ -29,12 +30,15 @@ export function PublicIdeaView({ idea }: PublicIdeaViewProps) {
   const mvp = analysis.mvp_blueprint || analysis.mvp || {}
   const gtm = analysis.gtm_strategy || analysis.gtm || {}
   const investor = analysis.investor_pitches || analysis.investor || {}
+  const researchHub = analysis.research_hub || analysis.execution_checklist || {}
+  const competitorWatch = analysis.competitor_watch || competitors
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <Navbar />
       
-      <main className="flex-grow container mx-auto px-4 py-12 space-y-12">
+      <main className="flex-grow container mx-auto px-4 pt-24 pb-12 space-y-12">
+
         {/* Header Section - High Contrast */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b-2 border-border pb-12">
           <div className="space-y-6">
@@ -75,6 +79,7 @@ export function PublicIdeaView({ idea }: PublicIdeaViewProps) {
                 { id: "mvp", label: "MVP Blueprint", icon: Zap },
                 { id: "gtm", label: "GTM Strategy", icon: Rocket },
                 { id: "investor", label: "Investor", icon: Briefcase },
+                { id: "research", label: "Research", icon: Globe },
               ].map((tab) => (
                 <TabsTrigger 
                   key={tab.id}
@@ -387,6 +392,58 @@ export function PublicIdeaView({ idea }: PublicIdeaViewProps) {
                  </CardContent>
                </Card>
             </TabsContent>
+
+            {/* Research Hub Tab */}
+            <TabsContent value="research" className="space-y-8 animate-in fade-in duration-500 outline-none">
+              <Card className="border-2 border-border shadow-none bg-card rounded-3xl">
+                <CardHeader>
+                  <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+                    <Globe className="h-4 w-4" /> Research Insights
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {researchHub && typeof researchHub === 'object' && Object.keys(researchHub).length > 0 ? (
+                    <div className="space-y-6">
+                      {Array.isArray(researchHub) ? (
+                        researchHub.map((item: any, i: number) => (
+                          <div key={i} className="p-4 rounded-2xl bg-muted/30 border border-border">
+                            <p className="text-sm text-foreground">{typeof item === 'string' ? item : item.title || item.task || JSON.stringify(item)}</p>
+                          </div>
+                        ))
+                      ) : (
+                        Object.entries(researchHub).map(([key, value]: [string, any], i: number) => (
+                          <div key={i} className="p-5 rounded-2xl bg-muted/30 border border-border space-y-2">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">{key.replace(/_/g, ' ')}</h4>
+                            {typeof value === 'string' ? (
+                              <p className="text-sm text-foreground leading-relaxed">{value}</p>
+                            ) : Array.isArray(value) ? (
+                              <ul className="space-y-1.5">
+                                {value.map((v: any, j: number) => (
+                                  <li key={j} className="text-sm text-foreground flex gap-2">
+                                    <span className="text-muted-foreground shrink-0">•</span>
+                                    {typeof v === 'string' ? v : v.title || v.name || v.task || JSON.stringify(v)}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : typeof value === 'object' && value !== null ? (
+                              <div className="space-y-1">
+                                {Object.entries(value).map(([k2, v2]: [string, any], j: number) => (
+                                  <p key={j} className="text-sm text-foreground"><span className="font-semibold">{k2.replace(/_/g, ' ')}:</span> {String(v2)}</p>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-foreground">{String(value)}</p>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm italic">Research hub data will appear after full analysis.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </div>
         </Tabs>
 
@@ -399,6 +456,22 @@ export function PublicIdeaView({ idea }: PublicIdeaViewProps) {
       </main>
 
       <Footer />
+
+      {/* Bottom CTA */}
+      <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-border py-4 px-6 z-50">
+        <div className="container mx-auto flex items-center justify-between max-w-4xl">
+          <div>
+            <p className="text-sm font-bold text-foreground">Want to validate your startup idea?</p>
+            <p className="text-xs text-muted-foreground">Get AI-powered analysis, market research, and competitor intelligence — free.</p>
+          </div>
+          <Link
+            href="/dashboard/new-idea"
+            className="shrink-0 inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
+          >
+            Validate your own idea free →
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }

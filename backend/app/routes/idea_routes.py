@@ -1,18 +1,19 @@
 from flask import Blueprint, request, jsonify, send_file
 from app.services.idea_analysis_service import IdeaAnalysisService
 from app.services.gemini_service import GeminiService
-from app.services.pdf_service import PDFService
-from app.services.ppt_service import PPTService
+from app.services.pdf_service import PDFService, generate_analysis_pdf
+from app.services.ppt_service import PPTService, generate_investor_ppt
 from app.services.market_service import MarketService
 from app.services.competitor_monitoring_service import CompetitorMonitoringService
 from app.models.user_model import Idea, Comment
 from app.models.competitor_model import CompetitorWatch, CompetitorAlert
 from app.middleware.auth_middleware import token_required
 from app.utils.response_formatter import ResponseFormatter
+from app.utils.sanitize import sanitize_idea_data, sanitize_input
+from app import db, limiter
 import os
 import json
 import secrets
-from app import db
 
 idea_bp = Blueprint('idea', __name__)
 
@@ -23,7 +24,9 @@ def create_idea(current_user):
     if not data:
         return ResponseFormatter.error("Missing request data")
     
-    idea = IdeaAnalysisService.create_idea(current_user.id, data)
+    # Sanitize all user inputs before DB insert
+    clean_data = sanitize_idea_data(data)
+    idea = IdeaAnalysisService.create_idea(current_user.id, clean_data)
     
     # Trigger analysis (This could be asynchronous in production, but here we do it synchronously or simulate it)
     # The requirement says "no dummy responses", so we perform real analysis.
@@ -54,6 +57,77 @@ def get_idea(current_user, idea_id):
         return ResponseFormatter.error("Idea not found", status=404)
     
     return ResponseFormatter.success(data={'idea': idea.to_dict()})
+
+
+@idea_bp.route('/<int:idea_id>/visibility', methods=['PATCH'])
+@token_required
+def toggle_visibility(current_user, idea_id):
+    """Toggle public/private visibility and generate share token if needed."""
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+
+    data = request.get_json(silent=True) or {}
+    is_public = data.get('is_public', not idea.is_public)
+    idea.is_public = is_public
+
+    if is_public:
+        # Always generate a new token when making public
+        idea.share_token = secrets.token_urlsafe(32)
+    else:
+        # Invalidate old token when going private — old links stop working
+        idea.share_token = secrets.token_urlsafe(32)
+
+    db.session.commit()
+    return ResponseFormatter.success(data={'idea': idea.to_dict()})
+
+
+@idea_bp.route('/public', methods=['GET'])
+def get_public_ideas():
+    """Get all public ideas for the Explore page — no auth required."""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 12, type=int)
+    industry = request.args.get('industry', '')
+    sort = request.args.get('sort', 'newest')
+
+    query = Idea.query.filter_by(is_public=True)
+
+    if industry:
+        query = query.filter(Idea.industry.ilike(f"%{industry}%"))
+
+    if sort == 'score':
+        query = query.order_by(Idea.overall_score.desc().nullslast())
+    elif sort == 'most_viewed':
+        query = query.order_by(Idea.public_views.desc().nullslast())
+    else:
+        query = query.order_by(Idea.created_at.desc())
+
+    paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    from app.models.user_model import User
+    ideas_data = []
+    for idea in paginated.items:
+        user = User.query.get(idea.user_id)
+        ideas_data.append({
+            "id": idea.id,
+            "title": idea.title,
+            "description": idea.description[:150] if idea.description else "",
+            "industry": idea.industry or idea.market or "",
+            "overall_score": idea.overall_score,
+            "share_token": idea.share_token,
+            "public_views": idea.public_views or 0,
+            "created_at": idea.created_at.isoformat(),
+            "founder_id": idea.user_id,
+            "founder_name": f"{user.first_name}" if user else "Anonymous",
+            "founder_initial": user.first_name[0].upper() if user and user.first_name else "A",
+        })
+
+    return ResponseFormatter.success(data={
+        "ideas": ideas_data,
+        "total": paginated.total,
+        "pages": paginated.pages,
+        "current_page": page,
+    })
 
 @idea_bp.route('/<int:idea_id>/download', methods=['GET'])
 @token_required
@@ -90,6 +164,80 @@ def download_ppt(current_user, idea_id):
         import traceback
         traceback.print_exc()
         return ResponseFormatter.error(f"Failed to generate PPT: {str(e)}", status=500)
+
+
+def _build_idea_export_data(idea):
+    """Build full analysis_data dict from idea ORM object for export services."""
+    stages = {}
+    for sr in (idea.stage_results or []):
+        try:
+            stages[sr.stage_name] = json.loads(sr.result_json or "{}")
+        except Exception:
+            stages[sr.stage_name] = {}
+
+    return {
+        "id": idea.id,
+        "title": idea.title,
+        "description": idea.description or "",
+        "one_liner": getattr(idea, "one_liner", "") or "",
+        "industry": idea.industry or getattr(idea, "market", "") or "",
+        "overall_score": idea.overall_score or 0,
+        "stages": stages,
+    }
+
+
+@idea_bp.route('/<int:idea_id>/export/ppt', methods=['POST'])
+@token_required
+def export_ppt(current_user, idea_id):
+    """Export themed PPT. Body: { "theme": "dark_executive"|"clean_light"|"gradient_bold" }"""
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+
+    body = request.get_json() or {}
+    valid_themes = {"dark_executive", "clean_light", "gradient_bold"}
+    theme = body.get("theme", "dark_executive")
+    if theme not in valid_themes:
+        theme = "dark_executive"
+
+    try:
+        analysis_data = _build_idea_export_data(idea)
+        file_path = generate_investor_ppt(analysis_data, theme)
+        safe_title = idea.title.replace(" ", "_")[:50]
+        return send_file(
+            file_path,
+            as_attachment=True,
+            mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            download_name=f"{safe_title}-InvestorDeck.pptx"
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return ResponseFormatter.error(f"Failed to generate PPT: {str(e)}", status=500)
+
+
+@idea_bp.route('/<int:idea_id>/export/pdf', methods=['POST'])
+@token_required
+def export_pdf(current_user, idea_id):
+    """Export branded PDF analysis report."""
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+
+    try:
+        analysis_data = _build_idea_export_data(idea)
+        file_path = generate_analysis_pdf(analysis_data)
+        safe_title = idea.title.replace(" ", "_")[:50]
+        return send_file(
+            file_path,
+            as_attachment=True,
+            mimetype="application/pdf",
+            download_name=f"{safe_title}-Analysis.pdf"
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return ResponseFormatter.error(f"Failed to generate PDF: {str(e)}", status=500)
 
 @idea_bp.route('/<int:idea_id>/investor-pitch', methods=['POST'])
 @token_required
@@ -263,6 +411,168 @@ Output JSON format:
 
 
 # ============================================
+# Bonus Features — Founder Match, Stress Test, Pitch Formula
+# ============================================
+
+@idea_bp.route('/<int:idea_id>/founder-match', methods=['POST'])
+@token_required
+def founder_match_score(current_user, idea_id):
+    """Generate a Founder-Idea Match Score based on the user's profile and idea."""
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+
+    prompt = f"""You are evaluating how well a founder matches their startup idea.
+
+Founder Profile:
+- Name: {current_user.first_name} {current_user.last_name}
+- Skills: {current_user.skills or 'Not specified'}
+- Bio: {current_user.bio or 'Not specified'}
+- Looking for: {current_user.looking_for or 'Not specified'}
+
+Startup Idea:
+- Title: {idea.title}
+- Description: {idea.description}
+- Problem: {idea.problem}
+- Solution: {idea.solution}
+- Target Audience: {idea.audience}
+- Industry: {idea.industry or idea.market}
+
+Return JSON:
+{{
+    "match_score": 0-100,
+    "verdict": "Strong Match/Good Match/Moderate Match/Weak Match",
+    "strengths": ["3 things the founder brings to this idea"],
+    "gaps": ["3 skill/experience gaps the founder should address"],
+    "recommended_cofounder": "Description of the ideal co-founder to complement this founder for this specific idea",
+    "advice": "2-3 sentences of actionable advice for the founder"
+}}"""
+
+    try:
+        result = GeminiService.call_gemini(prompt, "founder_match")
+        if result["success"]:
+            match_data = result["data"]
+            # Save match score to idea
+            idea.founder_match_score = match_data.get("match_score", 0)
+            db.session.commit()
+            return ResponseFormatter.success(data=match_data)
+        else:
+            return ResponseFormatter.error("Analysis is taking longer than usual. Please try again.", status=500)
+    except Exception as e:
+        return ResponseFormatter.error("Analysis is taking longer than usual. Please try again.", status=500)
+
+
+@idea_bp.route('/<int:idea_id>/stress-test', methods=['POST'])
+@token_required
+def stress_test(current_user, idea_id):
+    """AI Stress Test — plays devil's advocate against the idea."""
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+
+    analysis = idea.analysis_data or {}
+
+    prompt = f"""You are a ruthless but fair venture capitalist stress-testing a startup idea.
+Your job is to find every possible weakness, risk, and failure mode.
+Be brutally honest but constructive — point out problems AND suggest fixes.
+
+Startup Idea:
+- Title: {idea.title}
+- Description: {idea.description}
+- Problem: {idea.problem}
+- Solution: {idea.solution}
+- Target Audience: {idea.audience}
+- Industry: {idea.industry or idea.market}
+- Current Score: {analysis.get('overall_score', 'N/A')}/100
+
+Return JSON:
+{{
+    "stress_score": 0-100,
+    "stress_grade": "A/B/C/D/F",
+    "devil_questions": [
+        {{ "question": "Tough investor question", "why_it_matters": "Why this is a real concern", "suggested_answer": "How the founder should respond" }}
+    ],
+    "worst_case_scenarios": [
+        {{ "scenario": "What could go wrong", "probability": "High/Medium/Low", "mitigation": "How to prevent or handle it" }}
+    ],
+    "kill_scenarios": ["2-3 things that would completely kill this idea"],
+    "survival_tips": ["3-4 specific actions to survive the first year"],
+    "final_verdict": "2-3 sentence honest assessment of whether this idea can survive real-world pressure"
+}}
+
+Rules:
+- Generate 5 devil_questions that real investors would ask
+- Generate 4 worst_case_scenarios
+- Be specific to {idea.title}, not generic startup advice
+- stress_score: higher = more resilient (100 = practically bulletproof, 0 = will fail immediately)"""
+
+    try:
+        result = GeminiService.call_gemini(prompt, "stress_test")
+        if result["success"]:
+            return ResponseFormatter.success(data=result["data"])
+        else:
+            return ResponseFormatter.error("Analysis is taking longer than usual. Please try again.", status=500)
+    except Exception as e:
+        return ResponseFormatter.error("Analysis is taking longer than usual. Please try again.", status=500)
+
+
+@idea_bp.route('/<int:idea_id>/one-liner', methods=['POST'])
+@token_required
+def one_line_pitch(current_user, idea_id):
+    """Generate 3 one-line pitch formulas for the idea."""
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+
+    analysis = idea.analysis_data or {}
+
+    prompt = f"""Generate 3 different one-line pitch formats for this startup idea.
+
+Idea: {idea.title}
+Description: {idea.description}
+Problem: {idea.problem}
+Solution: {idea.solution}
+Target audience: {idea.audience}
+Industry: {idea.industry or idea.market}
+Score: {analysis.get('overall_score', 'N/A')}/100
+
+Return JSON:
+{{
+    "pitches": [
+        {{
+            "format": "Twitter Pitch",
+            "template": "The naming template used (e.g. 'We help [audience] do [benefit] by [method]')",
+            "pitch": "The actual one-liner (max 280 chars)",
+            "use_case": "When to use this pitch"
+        }},
+        {{
+            "format": "Elevator Pitch",
+            "template": "For [audience] who [need], [product] is a [category] that [benefit]. Unlike [alternative], we [differentiator].",
+            "pitch": "The actual elevator pitch (max 2 sentences)",
+            "use_case": "When to use this pitch"
+        }},
+        {{
+            "format": "Investor Hook",
+            "template": "[Industry] is a $[X]B market. [Surprising stat]. We're building [solution] to [outcome].",
+            "pitch": "The actual investor hook (max 2 sentences)",
+            "use_case": "When to use this pitch"
+        }}
+    ]
+}}
+
+Each pitch must be specific to {idea.title}. No generic filler."""
+
+    try:
+        result = GeminiService.call_gemini(prompt, "one_liner")
+        if result["success"]:
+            return ResponseFormatter.success(data=result["data"])
+        else:
+            return ResponseFormatter.error("Analysis is taking longer than usual. Please try again.", status=500)
+    except Exception as e:
+        return ResponseFormatter.error("Analysis is taking longer than usual. Please try again.", status=500)
+
+
+# ============================================
 # AI Layers Engine Endpoints
 # ============================================
 
@@ -344,6 +654,127 @@ def layers_finalize(current_user):
     except Exception as e:
         print(f"Layers finalize error: {str(e)}")
         return ResponseFormatter.error(f"Failed to finalize idea: {str(e)}", status=500)
+
+
+# ============================================
+# AI Layers — Improvement Mode (post-analysis refinement)
+# ============================================
+
+@idea_bp.route('/<int:idea_id>/layers/improve/start', methods=['POST'])
+@token_required
+def layers_improve_start(current_user, idea_id):
+    """Start an AI Layers improvement session for an existing, analyzed idea."""
+    from app.services.layers_service import LayersService
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+
+    analysis = idea.analysis_data or {}
+
+    # Build context from existing idea + analysis
+    context = f"""Existing Idea: {idea.title}
+Description: {idea.description}
+Problem: {idea.problem}
+Solution: {idea.solution}
+Target Audience: {idea.audience}
+Market: {idea.industry or idea.market}
+Overall Score: {analysis.get('overall_score', 'N/A')}/100
+Risk Level: {analysis.get('risk_level', 'Unknown')}
+Key Strengths: {', '.join(analysis.get('strengths', [])[:3])}
+Key Risks: {', '.join(analysis.get('risks', [])[:3])}
+Recommendation: {str(analysis.get('recommendation', ''))[:300]}
+
+This idea has ALREADY been analyzed. The user wants to IMPROVE it.
+Focus on the weakest areas and biggest risks identified above.
+Ask targeted improvement questions."""
+
+    try:
+        result = LayersService.get_first_question(context)
+        return ResponseFormatter.success(data=result)
+    except Exception as e:
+        print(f"Layers improve start error: {str(e)}")
+        return ResponseFormatter.error("Analysis is taking longer than usual. Please try again.", status=500)
+
+
+@idea_bp.route('/<int:idea_id>/layers/improve/chat', methods=['POST'])
+@token_required
+def layers_improve_chat(current_user, idea_id):
+    """Continue the improvement layers session."""
+    from app.services.layers_service import LayersService
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+
+    data = request.get_json(silent=True) or {}
+    history = data.get('history', [])
+
+    analysis = idea.analysis_data or {}
+    context = f"""Existing Idea (IMPROVEMENT MODE): {idea.title}
+Description: {idea.description}
+Problem: {idea.problem}
+Solution: {idea.solution}
+Target Audience: {idea.audience}
+Market: {idea.industry or idea.market}
+Score: {analysis.get('overall_score', 'N/A')}/100
+Weaknesses to address: {', '.join(analysis.get('risks', [])[:3])}"""
+
+    try:
+        result = LayersService.get_next_question(context, history)
+        return ResponseFormatter.success(data=result)
+    except Exception as e:
+        print(f"Layers improve chat error: {str(e)}")
+        return ResponseFormatter.error("Analysis is taking longer than usual. Please try again.", status=500)
+
+
+@idea_bp.route('/<int:idea_id>/layers/improve/finalize', methods=['POST'])
+@token_required
+def layers_improve_finalize(current_user, idea_id):
+    """Finalize improvements — update the idea fields with refined data and increment ai_layers_count."""
+    from app.services.layers_service import LayersService
+    idea = Idea.query.get(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+
+    data = request.get_json(silent=True) or {}
+    history = data.get('history', [])
+
+    if not history:
+        return ResponseFormatter.error("Missing conversation history")
+
+    try:
+        # Build the full context for synthesis
+        context = f"""{idea.title}: {idea.description}
+Problem: {idea.problem}
+Solution: {idea.solution}
+Target Audience: {idea.audience}
+Market: {idea.industry or idea.market}"""
+
+        synthesized = LayersService.synthesize_idea(context, history)
+
+        # Update idea fields with improved data (merge, don't replace blanks)
+        if synthesized.get('description'):
+            idea.description = synthesized['description']
+        if synthesized.get('problem'):
+            idea.problem = synthesized['problem']
+        if synthesized.get('solution'):
+            idea.solution = synthesized['solution']
+        if synthesized.get('audience'):
+            idea.audience = synthesized['audience']
+        if synthesized.get('market'):
+            idea.market = synthesized['market']
+
+        # Increment AI layers count — this triggers the "AI-Refined ✓" badge
+        idea.ai_layers_count = (idea.ai_layers_count or 0) + 1
+
+        db.session.commit()
+
+        return ResponseFormatter.success(
+            data={'idea': idea.to_dict(), 'improvements': synthesized},
+            message="Idea improved successfully! AI-Refined badge earned."
+        )
+    except Exception as e:
+        print(f"Layers improve finalize error: {str(e)}")
+        return ResponseFormatter.error(f"Failed to finalize improvements: {str(e)}", status=500)
 
 
 # ============================================
@@ -521,59 +952,27 @@ def trigger_competitor_scan(current_user, idea_id):
     )
 
 
-# ============================================
-# Public / Private Sharing Endpoints
-# ============================================
-
-@idea_bp.route('/<int:idea_id>/visibility', methods=['PATCH'])
-@token_required
-def toggle_visibility(current_user, idea_id):
-    """Toggle idea visibility between public and private.
-
-    When making public for the first time, a stable share_token is generated
-    and persisted so the link remains valid even if the idea is later made
-    private and then re-published.
-    """
-    idea = Idea.query.get(idea_id)
-    if not idea or idea.user_id != current_user.id:
-        return ResponseFormatter.error("Idea not found", status=404)
-
-    data = request.get_json(silent=True) or {}
-
-    # Caller can pass { "is_public": true/false } explicitly, or we just flip
-    if 'is_public' in data:
-        idea.is_public = bool(data['is_public'])
-    else:
-        idea.is_public = not idea.is_public
-
-    # Generate a share token the first time the idea is made public
-    if idea.is_public and not idea.share_token:
-        idea.share_token = secrets.token_urlsafe(32)
-
-    db.session.commit()
-
-    return ResponseFormatter.success(
-        data={'idea': idea.to_dict()},
-        message="Idea is now public" if idea.is_public else "Idea is now private"
-    )
 
 
 @idea_bp.route('/shared/<string:share_token>', methods=['GET'])
 def get_public_idea(share_token):
-    """Public, no-auth endpoint to view a shared idea by its share token.
-
-    Allows viewing if the idea is public OR if the user has the direct link
-    (supporting the 'Unlisted/Private sharing with teammates' request).
-    """
+    """Public, no-auth endpoint to view a shared idea by its share token."""
     idea = Idea.query.filter_by(share_token=share_token).first()
 
     if not idea:
         return ResponseFormatter.error(
-            "This link is invalid.", status=404
+            "This link is invalid or has expired.", status=404
         )
 
-    # Note: We removed the check `if not idea.is_public` to allow Unlisted sharing.
-    # The share_token acts as the 'password' to the idea.
+    # Block access if the idea has been set to private
+    if not idea.is_public:
+        return ResponseFormatter.error(
+            "This idea is no longer public. The owner has made it private.", status=403
+        )
+
+    # Increment public view counter
+    idea.public_views = (idea.public_views or 0) + 1
+    db.session.commit()
 
     return ResponseFormatter.success(
         data={'idea': idea.to_public_dict()},
@@ -581,15 +980,6 @@ def get_public_idea(share_token):
     )
 
 
-@idea_bp.route('/public', methods=['GET'])
-def get_public_ideas():
-    """Returns all ideas that are marked as public to be listed in the gallery."""
-    ideas = Idea.query.filter_by(is_public=True).order_by(Idea.created_at.desc()).all()
-
-    return ResponseFormatter.success(
-        data={'ideas': [idea.to_public_dict() for idea in ideas]},
-        message="Public ideas gallery fetched"
-    )
 
 
 # ============================================

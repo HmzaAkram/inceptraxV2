@@ -1,72 +1,217 @@
 import os
 import json
-from serpapi import GoogleSearch
+import requests
 from app import db
 from app.models.user_model import Idea
 
+
 class MarketService:
+    """Handles web research for real-time market & competitor data.
+
+    Provider chain: Tavily (best for AI) → SerpAPI (Google) → fallback empty.
+    Firecrawl: Deep-scrapes competitor websites for detailed analysis.
+    """
+
+    # ─── Tavily (Primary — AI-optimized search) ──────────────────────────────
+
+    @staticmethod
+    def _search_tavily(query, max_results=5):
+        """Search using Tavily API — returns AI-ready summaries."""
+        api_key = os.environ.get('TAVILY_API_KEY', '')
+        if not api_key:
+            return None
+
+        try:
+            response = requests.post(
+                "https://api.tavily.com/search",
+                json={
+                    "api_key": api_key,
+                    "query": query,
+                    "max_results": max_results,
+                    "search_depth": "advanced",
+                    "include_answer": True,
+                },
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                print(f"[Tavily] Error {response.status_code}: {response.text[:200]}")
+                return None
+
+            data = response.json()
+            results = []
+
+            # Add the AI-generated answer summary
+            answer = data.get("answer", "")
+
+            for r in data.get("results", []):
+                results.append({
+                    "title": r.get("title", ""),
+                    "link": r.get("url", ""),
+                    "snippet": r.get("content", "")[:300],
+                    "source": r.get("url", "").split("/")[2] if r.get("url") else "",
+                    "score": r.get("score", 0),
+                })
+
+            return {"results": results, "answer": answer}
+
+        except Exception as e:
+            print(f"[Tavily] Search failed: {str(e)[:200]}")
+            return None
+
+    # ─── SerpAPI (Fallback — Google Search) ──────────────────────────────────
+
+    @staticmethod
+    def _search_serpapi(query, num=3):
+        """Fallback search using SerpAPI."""
+        api_key = os.environ.get("SERPAPI_KEY", "")
+        if not api_key:
+            return None
+
+        try:
+            from serpapi import GoogleSearch
+            params = {
+                "engine": "google",
+                "q": query,
+                "api_key": api_key,
+                "num": num,
+            }
+            search = GoogleSearch(params)
+            data = search.get_dict()
+
+            results = []
+            for r in data.get("organic_results", []):
+                results.append({
+                    "title": r.get("title", ""),
+                    "link": r.get("link", ""),
+                    "snippet": r.get("snippet", ""),
+                    "source": r.get("source", ""),
+                })
+
+            return {"results": results, "answer": ""}
+
+        except Exception as e:
+            print(f"[SerpAPI] Search failed: {str(e)[:200]}")
+            return None
+
+    # ─── Unified search (Tavily → SerpAPI) ───────────────────────────────────
+
+    @staticmethod
+    def search(query, max_results=5):
+        """Search with automatic fallback: Tavily → SerpAPI."""
+        # Try Tavily first (better for AI)
+        result = MarketService._search_tavily(query, max_results)
+        if result and result.get("results"):
+            print(f"[Research] Tavily returned {len(result['results'])} results for: {query[:60]}")
+            return result
+
+        # Fall back to SerpAPI
+        result = MarketService._search_serpapi(query, max_results)
+        if result and result.get("results"):
+            print(f"[Research] SerpAPI returned {len(result['results'])} results for: {query[:60]}")
+            return result
+
+        print(f"[Research] No results for: {query[:60]}")
+        return {"results": [], "answer": ""}
+
+    # ─── Firecrawl (Deep competitor scraping) ────────────────────────────────
+
+    @staticmethod
+    def scrape_url(url):
+        """Scrape a URL using Firecrawl and return clean markdown text.
+
+        Used for deep competitor analysis — scrapes their actual website
+        and feeds the content to Gemini for detailed competitive intelligence.
+        """
+        api_key = os.environ.get('FIRECRAWL_API_KEY', '')
+        if not api_key:
+            return None
+
+        try:
+            response = requests.post(
+                "https://api.firecrawl.dev/v1/scrape",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "url": url,
+                    "formats": ["markdown"],
+                },
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                print(f"[Firecrawl] Error {response.status_code} for {url}")
+                return None
+
+            data = response.json()
+            markdown = data.get("data", {}).get("markdown", "")
+
+            # Truncate to avoid blowing up prompts
+            if len(markdown) > 3000:
+                markdown = markdown[:3000] + "\n\n[Content truncated...]"
+
+            print(f"[Firecrawl] Scraped {len(markdown)} chars from {url}")
+            return markdown
+
+        except Exception as e:
+            print(f"[Firecrawl] Scrape failed for {url}: {str(e)[:200]}")
+            return None
+
+    # ─── Public API Methods ──────────────────────────────────────────────────
+
     @staticmethod
     def fetch_market_data(idea_id):
+        """Fetch real-time market data for a specific idea."""
         idea = Idea.query.get(idea_id)
         if not idea:
             return None
 
-        api_key = os.getenv("SERPAPI_KEY")
-        if not api_key:
-            return {"error": "SERPAPI_KEY not configured"}
+        industry = idea.industry or idea.market or "technology"
+        title = idea.title or "startup"
 
-        # Define search queries based on idea context
         queries = [
-            f"{idea.title} market size and trends 2024 2025",
-            f"{idea.market} industry statistics growth rate",
-            f"competitors for {idea.title} {idea.solution}"
+            f"{industry} market size and growth rate 2024 2025",
+            f"{industry} industry statistics trends CAGR",
+            f"top {industry} startups competitors {title} alternatives 2025",
         ]
 
         aggregated_results = []
-        
-        try:
-            for query in queries:
-                params = {
-                    "engine": "google",
-                    "q": query,
-                    "api_key": api_key,
-                    "num": 3  # Limit results per query to save credits/keep it focused
-                }
 
-                search = GoogleSearch(params)
-                results = search.get_dict()
-                
-                organic_results = results.get("organic_results", [])
-                for result in organic_results:
-                    aggregated_results.append({
-                        "title": result.get("title"),
-                        "link": result.get("link"),
-                        "snippet": result.get("snippet"),
-                        "source": result.get("source"),
-                        "date": result.get("date", "Recent")
-                    })
-            
-            # Update idea analysis data with new insights
-            # We treat this as an appendage to existing data
-            if not idea.analysis_data:
-                idea.analysis_data = {}
-            
-            if "market_research" not in idea.analysis_data:
-                 idea.analysis_data["market_research"] = {}
+        for query in queries:
+            result = MarketService.search(query, max_results=3)
+            for r in result.get("results", []):
+                r["query"] = query
+                aggregated_results.append(r)
 
-            # Ensure we don't overwrite the AI analysis, just add to it
-            current_market_data = idea.analysis_data.get("market_research", {})
-            current_market_data["live_search"] = aggregated_results
-            
-            # Re-assign to trigger SQLalchemy JSON update detection
-            market_data_copy = dict(idea.analysis_data)
-            market_data_copy["market_research"] = current_market_data
-            idea.analysis_data = market_data_copy
-            
-            db.session.commit()
-            
-            return aggregated_results
+        # Update idea analysis data
+        if not idea.analysis_data:
+            idea.analysis_data = {}
 
-        except Exception as e:
-            print(f"Error fetching market data: {str(e)}")
-            return {"error": str(e)}
+        if "market_research" not in idea.analysis_data:
+            idea.analysis_data["market_research"] = {}
+
+        current_market_data = idea.analysis_data.get("market_research", {})
+        current_market_data["live_search"] = aggregated_results
+
+        market_data_copy = dict(idea.analysis_data)
+        market_data_copy["market_research"] = current_market_data
+        idea.analysis_data = market_data_copy
+
+        db.session.commit()
+
+        return aggregated_results
+
+    @staticmethod
+    def deep_research(query):
+        """Deep research using Tavily with AI answer summary.
+
+        Used by the Research Hub's Deep Research tab.
+        Returns both search results and an AI-generated answer.
+        """
+        result = MarketService.search(query, max_results=8)
+        return {
+            "answer": result.get("answer", ""),
+            "sources": result.get("results", []),
+        }
