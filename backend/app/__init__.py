@@ -43,7 +43,7 @@ def create_app():
     ],
     "supports_credentials": True,
     "allow_headers": ["Content-Type", "Authorization"],
-    "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    "methods": ["GET", "POST", "PUT", "PATCH", "DELETE"],
     }})
 
     # ─── MongoDB ──────────────────────────────────────────────────────────
@@ -59,25 +59,6 @@ def create_app():
 
     # ─── Extensions ───────────────────────────────────────────────────────
     limiter.init_app(app)
-
-    # ─── CORS Preflight ───────────────────────────────────────────────────
-    @app.before_request
-    def handle_options():
-        if request.method == "OPTIONS":
-            response = app.make_default_options_response()
-            origin = request.headers.get('Origin')
-            allowed = [
-                "https://www.inceptrax.com",
-                "https://inceptrax.com",
-                "http://localhost:3000",
-                "http://localhost:5173",
-            ]
-            if origin in allowed:
-                response.headers['Access-Control-Allow-Origin'] = origin
-                response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
-                response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-                response.headers['Access-Control-Allow-Credentials'] = 'true'
-            return response
 
     # ─── Blueprints ───────────────────────────────────────────────────────
     from app.routes.auth_routes import auth_bp
