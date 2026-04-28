@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Client-side redirect for unauthenticated users (backup for middleware)
     useEffect(() => {
         if (!loading) {
-            const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/about', '/features', '/contact', '/public-ideas'];
+            const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/about', '/features', '/contact', '/public-ideas', '/privacy-policy', '/terms-of-service'];
             const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/share/') || pathname.startsWith('/reset-password/');
 
             if (!user && !isPublicRoute) {

@@ -1,11 +1,11 @@
 from flask import Blueprint, request, jsonify, send_file
 from app.services.idea_analysis_service import IdeaAnalysisService
 from app.services.gemini_service import GeminiService
-from app.services.pdf_service import PDFService, generate_analysis_pdf
-from app.services.ppt_service import PPTService, generate_investor_ppt
+from app.services.pdf_service import generate_analysis_pdf
+from app.services.ppt_service import generate_investor_ppt
 from app.services.market_service import MarketService
 from app.services.competitor_monitoring_service import CompetitorMonitoringService
-from app.models.user_model import Idea, Comment, StageResult
+from app.models.user_model import Idea, Comment, StageResult, User
 from app.models.competitor_model import CompetitorWatch, CompetitorAlert
 from app.middleware.auth_middleware import token_required
 from app.utils.response_formatter import ResponseFormatter
@@ -20,18 +20,37 @@ idea_bp = Blueprint('idea', __name__)
 @idea_bp.route('/', methods=['POST'])
 @token_required
 def create_idea(current_user):
+    import threading
     data = request.get_json()
     if not data:
         return ResponseFormatter.error("Missing request data")
     
     clean_data = sanitize_idea_data(data)
     idea = IdeaAnalysisService.create_idea(current_user.id, clean_data)
-    
-    analysis_results = IdeaAnalysisService.process_idea_analysis(idea.id)
+
+    # Mark as processing immediately
+    idea.status = 'processing'
+    idea.current_stage = 0
+    idea.current_stage_name = ''
+    idea.save()
+
+    # Run analysis in background thread
+    from flask import current_app
+    app = current_app._get_current_object()
+
+    def run_analysis(app_ctx, idea_id):
+        with app_ctx.app_context():
+            try:
+                IdeaAnalysisService.process_idea_analysis(idea_id)
+            except Exception as e:
+                print(f"[Background Analysis] Error for idea #{idea_id}: {e}")
+
+    thread = threading.Thread(target=run_analysis, args=(app, idea.id), daemon=True)
+    thread.start()
     
     return ResponseFormatter.success(
         data={'idea': idea.to_dict()},
-        message="Idea created and analyzed successfully",
+        message="Idea created — analysis started",
         status=201
     )
 
@@ -115,13 +134,16 @@ def download_report(current_user, idea_id):
         return ResponseFormatter.error("Idea not found", status=404)
         
     try:
-        file_path = PDFService.generate_report(idea)
+        analysis_data = _build_idea_export_data(idea)
+        file_path = generate_analysis_pdf(analysis_data)
         return send_file(
             file_path,
             as_attachment=True,
             download_name=f"{idea.title.replace(' ', '_')}-Full-Analysis.pdf"
         )
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return ResponseFormatter.error(f"Failed to generate PDF: {str(e)}", status=500)
 
 @idea_bp.route('/<int:idea_id>/download-ppt', methods=['GET'])
@@ -132,7 +154,8 @@ def download_ppt(current_user, idea_id):
         return ResponseFormatter.error("Idea not found", status=404)
         
     try:
-        file_path = PPTService.generate_presentation(idea)
+        analysis_data = _build_idea_export_data(idea)
+        file_path = generate_investor_ppt(analysis_data, "dark_executive")
         return send_file(
             file_path,
             as_attachment=True,
@@ -168,19 +191,25 @@ def _build_idea_export_data(idea):
 @idea_bp.route('/<int:idea_id>/export/ppt', methods=['POST'])
 @token_required
 def export_ppt(current_user, idea_id):
-    """Export themed PPT. Body: { "theme": "dark_executive"|"clean_light"|"gradient_bold" }"""
+    """Export themed PPT with customization options."""
     idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
 
     body = request.get_json() or {}
-    valid_themes = {"dark_executive", "clean_light", "gradient_bold"}
     theme = body.get("theme", "dark_executive")
-    if theme not in valid_themes:
-        theme = "dark_executive"
+    sections = body.get("sections", None)  # list of section keys or None for all
+    font = body.get("font", None)
+    layout = body.get("layout", None)
+    include_charts = body.get("include_charts", True)
 
     try:
         analysis_data = _build_idea_export_data(idea)
+        # Pass customization options
+        analysis_data["_export_sections"] = sections
+        analysis_data["_export_font"] = font
+        analysis_data["_export_layout"] = layout
+        analysis_data["_export_include_charts"] = include_charts
         file_path = generate_investor_ppt(analysis_data, theme)
         safe_title = idea.title.replace(" ", "_")[:50]
         return send_file(
@@ -198,13 +227,19 @@ def export_ppt(current_user, idea_id):
 @idea_bp.route('/<int:idea_id>/export/pdf', methods=['POST'])
 @token_required
 def export_pdf(current_user, idea_id):
-    """Export branded PDF analysis report."""
+    """Export branded PDF analysis report with optional section filtering."""
     idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
 
+    body = request.get_json() or {}
+    sections = body.get("sections", None)  # list of section keys or None for all
+    font = body.get("font", None)
+
     try:
         analysis_data = _build_idea_export_data(idea)
+        analysis_data["_export_sections"] = sections
+        analysis_data["_export_font"] = font
         file_path = generate_analysis_pdf(analysis_data)
         safe_title = idea.title.replace(" ", "_")[:50]
         return send_file(
@@ -217,6 +252,29 @@ def export_pdf(current_user, idea_id):
         import traceback
         traceback.print_exc()
         return ResponseFormatter.error(f"Failed to generate PDF: {str(e)}", status=500)
+
+@idea_bp.route('/<int:idea_id>/status', methods=['GET'])
+@token_required
+def get_idea_status(current_user, idea_id):
+    """Get real-time analysis progress for stage tracker UI."""
+    idea = Idea.find_by_id(idea_id)
+    if not idea or idea.user_id != current_user.id:
+        return ResponseFormatter.error("Idea not found", status=404)
+
+    # Get completed stages from DB
+    completed_stages = []
+    stage_results = StageResult.find_by_idea(idea_id)
+    for sr in stage_results:
+        completed_stages.append(sr.stage_name)
+
+    return jsonify({
+        "status": getattr(idea, 'status', 'pending'),
+        "current_stage": getattr(idea, 'current_stage', 0),
+        "current_stage_name": getattr(idea, 'current_stage_name', ''),
+        "completed_stages": completed_stages,
+        "overall_score": idea.overall_score or 0,
+    }), 200
+
 
 @idea_bp.route('/<int:idea_id>/investor-pitch', methods=['POST'])
 @token_required
@@ -270,16 +328,34 @@ def delete_idea(current_user, idea_id):
 @idea_bp.route('/<int:idea_id>/reanalyze', methods=['POST'])
 @token_required
 def reanalyze_idea(current_user, idea_id):
+    import threading
     idea = Idea.find_by_id(idea_id)
     if not idea or idea.user_id != current_user.id:
         return ResponseFormatter.error("Idea not found", status=404)
     
-    analysis_results = IdeaAnalysisService.process_idea_analysis(idea.id)
-    # Refresh the idea from DB to get updated data
-    idea = Idea.find_by_id(idea_id)
+    # Mark as processing immediately
+    idea.status = 'processing'
+    idea.current_stage = 0
+    idea.current_stage_name = ''
+    idea.save()
+
+    # Run analysis in background thread
+    from flask import current_app
+    app = current_app._get_current_object()
+
+    def run_analysis(app_ctx, idea_id):
+        with app_ctx.app_context():
+            try:
+                IdeaAnalysisService.process_idea_analysis(idea_id)
+            except Exception as e:
+                print(f"[Background Analysis] Error for idea #{idea_id}: {e}")
+
+    thread = threading.Thread(target=run_analysis, args=(app, idea.id), daemon=True)
+    thread.start()
+
     return ResponseFormatter.success(
         data={'idea': idea.to_dict()},
-        message="Idea re-analyzed successfully"
+        message="Re-analysis started"
     )
 
 @idea_bp.route('/<int:idea_id>/market/research', methods=['POST'])
@@ -598,6 +674,7 @@ def layers_chat(current_user):
 def layers_finalize(current_user):
     """Synthesize the conversation into a full Idea and trigger analysis."""
     from app.services.layers_service import LayersService
+    import threading
     data = request.get_json(silent=True) or {}
     initial_idea = data.get('initial_idea', '').strip()
     history = data.get('history', [])
@@ -608,14 +685,42 @@ def layers_finalize(current_user):
     try:
         synthesized = LayersService.synthesize_idea(initial_idea, history)
         idea = IdeaAnalysisService.create_idea(current_user.id, synthesized)
-        IdeaAnalysisService.process_idea_analysis(idea.id)
 
-        current_user.api_credits_used += 2
-        current_user.save()
+        # Mark as processing immediately
+        idea.status = 'processing'
+        idea.current_stage = 0
+        idea.current_stage_name = ''
+        idea.save()
+
+        # Run analysis in background thread so response returns immediately
+        # This lets the frontend StageTracker poll and show real-time progress
+        from flask import current_app
+        app = current_app._get_current_object()
+
+        def run_analysis(app_ctx, idea_id, user_id):
+            with app_ctx.app_context():
+                try:
+                    IdeaAnalysisService.process_idea_analysis(idea_id)
+                    # Update user credits after successful analysis
+                    user = User.find_by_id(user_id)
+                    if user:
+                        user.api_credits_used += 2
+                        user.save()
+                except Exception as e:
+                    print(f"[Background Analysis] Error for idea #{idea_id}: {e}")
+                    import traceback
+                    traceback.print_exc()
+
+        thread = threading.Thread(
+            target=run_analysis,
+            args=(app, idea.id, current_user.id),
+            daemon=True
+        )
+        thread.start()
 
         return ResponseFormatter.success(
             data={'idea': idea.to_dict()},
-            message="Idea synthesized and analyzed successfully",
+            message="Idea created — analysis started in background",
             status=201
         )
     except Exception as e:

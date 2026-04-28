@@ -2,11 +2,13 @@ from flask import Blueprint, request
 from app.middleware.auth_middleware import token_required
 from app.utils.response_formatter import ResponseFormatter
 from app.models.user_model import Notification
+from app import limiter
 
 notification_bp = Blueprint('notification', __name__)
 
 
 @notification_bp.route('/', methods=['GET'])
+@limiter.limit("120/minute")
 @token_required
 def get_notifications(current_user):
     """Get all notifications for the current user."""

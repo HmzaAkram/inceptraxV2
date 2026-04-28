@@ -124,6 +124,36 @@ const MILESTONE_COLORS: Record<string, { bg: string; border: string; icon: strin
   Growth:     { bg: "bg-emerald-500/10", border: "border-emerald-500/30", icon: "text-emerald-500" },
 }
 
+/**
+ * Safely extract a string value from a field that may be:
+ * - A plain string: return as-is
+ * - A JSON-stringified object: parse and extract `field` key
+ * - An object: extract `field` key directly
+ */
+function safeStr(value: any, field?: string): string {
+  if (typeof value === "string") {
+    // Try to detect if it looks like a JSON object string
+    const trimmed = value.trim()
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (field && parsed[field] != null) return String(parsed[field])
+        if (typeof parsed === "object") return Object.values(parsed).filter(Boolean).join(" — ")
+        return String(parsed)
+      } catch {
+        return value
+      }
+    }
+    return value
+  }
+  if (value == null) return ""
+  if (typeof value === "object") {
+    if (field && value[field] != null) return String(value[field])
+    return Object.values(value).filter(Boolean).join(" — ")
+  }
+  return String(value)
+}
+
 // ─────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────
@@ -435,11 +465,11 @@ export default function ResearchHubPage() {
                             "text-sm font-medium transition-colors",
                             isDone ? "line-through text-muted-foreground" : "text-foreground"
                           )}>
-                            {item.step}
+                            {safeStr(item.step, "step")}
                           </p>
                           {!isDone && (
                             <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                              {item.description}
+                              {safeStr(item.description, "description")}
                             </p>
                           )}
                         </div>

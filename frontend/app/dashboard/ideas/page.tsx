@@ -3,14 +3,16 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trash2, Plus, ArrowRight, Loader2, Lightbulb, Search, Globe, Lock, Link2, Check, Download, Sparkles, Presentation } from "lucide-react"
+import { Trash2, Plus, ArrowRight, Loader2, Lightbulb, Search, Globe, Lock, Link2, Check, Download, Sparkles, Presentation, AlertTriangle, RotateCcw } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/api"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import JSZip from "jszip"
 import { saveAs } from "file-saver"
 import { ExportModal } from "@/components/export-modal"
+import { PdfExportModal } from "@/components/pdf-export-modal"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -32,6 +34,7 @@ interface Idea {
     is_public: boolean;
     share_token: string | null;
     ai_layers_count?: number;
+    status?: string;
 }
 
 export default function IdeasPage() {
@@ -46,6 +49,9 @@ export default function IdeasPage() {
     const [isDownloading, setIsDownloading] = useState<number | null>(null)
     const [isExporting, setIsExporting] = useState(false)
     const [exportModalId, setExportModalId] = useState<{ id: number; title: string } | null>(null)
+    const [pdfExportModalId, setPdfExportModalId] = useState<{ id: number; title: string } | null>(null)
+    const [retryingId, setRetryingId] = useState<number | null>(null)
+    const router = useRouter()
 
     useEffect(() => {
         async function fetchIdeas() {
@@ -105,35 +111,21 @@ export default function IdeasPage() {
         }
     }
 
-    const handleDownloadPdf = async (ideaId: number, title: string) => {
-        setIsDownloading(ideaId)
+    const handleDownloadPdf = (ideaId: number, title: string) => {
+        setPdfExportModalId({ id: ideaId, title })
+    }
+
+    const handleRetry = async (ideaId: number) => {
+        setRetryingId(ideaId)
         try {
-            const token = typeof window !== "undefined" ? localStorage.getItem("token") : null
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/ideas/${ideaId}/export/pdf`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    },
-                }
-            )
-            if (!res.ok) throw new Error("Export failed")
-            const blob = await res.blob()
-            const url = window.URL.createObjectURL(blob)
-            const a = document.createElement("a")
-            a.href = url
-            a.download = `${title.replace(/\s+/g, "-")}-Analysis.pdf`
-            document.body.appendChild(a)
-            a.click()
-            window.URL.revokeObjectURL(url)
-            document.body.removeChild(a)
-            toast.success("PDF report downloaded!")
-        } catch (error: any) {
-            toast.error(error.message || "Failed to download PDF")
+            await apiFetch(`/ideas/${ideaId}/reanalyze`, { method: "POST" })
+            toast.success("Re-analysis started!")
+            setIdeas(prev => prev.map(i => i.id === ideaId ? { ...i, status: "processing" } : i))
+            setTimeout(() => router.push(`/dashboard/idea/${ideaId}/progress`), 500)
+        } catch (err: any) {
+            toast.error(err.message || "Failed to retry analysis")
         } finally {
-            setIsDownloading(null)
+            setRetryingId(null)
         }
     }
 
@@ -227,11 +219,25 @@ export default function IdeasPage() {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {filteredIdeas.length > 0 ? (
                     filteredIdeas.map((idea) => (
-                        <Card key={idea.id} className="border-none shadow-sm hover:shadow-md transition-shadow group bg-card/50 overflow-hidden flex flex-col">
+                        <Card key={idea.id} className={`border-none shadow-sm hover:shadow-md transition-shadow group bg-card/50 overflow-hidden flex flex-col ${
+                            idea.status === 'failed' ? 'ring-2 ring-red-200 dark:ring-red-900/50' : idea.status === 'processing' ? 'ring-2 ring-amber-200 dark:ring-amber-900/50' : ''
+                        }`}>
                             <CardHeader className="pb-2">
                                 <div className="flex justify-between items-start mb-2">
-                                    <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                                        <Lightbulb className="h-5 w-5" />
+                                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${
+                                        idea.status === 'failed'
+                                            ? 'bg-red-100 dark:bg-red-900/30 text-red-500'
+                                            : idea.status === 'processing'
+                                            ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600'
+                                            : 'bg-primary/10 text-primary'
+                                    }`}>
+                                        {idea.status === 'processing' ? (
+                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                        ) : idea.status === 'failed' ? (
+                                            <AlertTriangle className="h-5 w-5" />
+                                        ) : (
+                                            <Lightbulb className="h-5 w-5" />
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <div className="text-right mr-3">
@@ -279,6 +285,16 @@ export default function IdeasPage() {
                                     <span className="text-xs text-muted-foreground">
                                         Created {new Date(idea.created_at).toLocaleDateString()}
                                     </span>
+                                    {idea.status === 'processing' && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                                            <Loader2 className="h-3 w-3 animate-spin" /> Processing
+                                        </span>
+                                    )}
+                                    {idea.status === 'failed' && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-600 dark:text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">
+                                            <AlertTriangle className="h-3 w-3" /> Failed
+                                        </span>
+                                    )}
                                     {(idea.ai_layers_count ?? 0) > 0 && (
                                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-violet-600 dark:text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full">
                                             <Sparkles className="h-3 w-3" /> AI-Refined ✓
@@ -336,36 +352,59 @@ export default function IdeasPage() {
                                 </div>
 
                                 <div className="flex gap-2">
-                                    <Button variant="outline" className="flex-1 rounded-xl gap-2 bg-transparent border-primary/20 text-primary hover:bg-primary/5 h-10" asChild>
-                                        <Link href={`/dashboard/idea/${idea.id}/validation`}>
-                                            View <ArrowRight className="h-4 w-4" />
-                                        </Link>
-                                    </Button>
-                                    {idea.overall_score && idea.overall_score > 0 ? (
+                                    {idea.status === 'failed' ? (
+                                        <Button
+                                            className="flex-1 rounded-xl gap-2 h-10 bg-red-600 hover:bg-red-700 text-white"
+                                            onClick={() => handleRetry(idea.id)}
+                                            disabled={retryingId === idea.id}
+                                        >
+                                            {retryingId === idea.id ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <RotateCcw className="h-4 w-4" />
+                                            )}
+                                            Retry Analysis
+                                        </Button>
+                                    ) : idea.status === 'processing' ? (
+                                        <Button variant="outline" className="flex-1 rounded-xl gap-2 bg-transparent border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 h-10" asChild>
+                                            <Link href={`/dashboard/idea/${idea.id}/progress`}>
+                                                <Loader2 className="h-4 w-4 animate-spin" /> View Progress
+                                            </Link>
+                                        </Button>
+                                    ) : (
                                         <>
-                                            <Button
-                                                variant="secondary"
-                                                size="icon"
-                                                className="h-10 w-10 rounded-xl"
-                                                onClick={() => handleDownloadPdf(idea.id, idea.title)}
-                                                disabled={isDownloading === idea.id}
-                                                title="Download PDF Report"
-                                            >
-                                                {isDownloading === idea.id
-                                                    ? <Loader2 className="h-4 w-4 animate-spin" />
-                                                    : <Download className="h-4 w-4" />}
+                                            <Button variant="outline" className="flex-1 rounded-xl gap-2 bg-transparent border-primary/20 text-primary hover:bg-primary/5 h-10" asChild>
+                                                <Link href={`/dashboard/idea/${idea.id}/validation`}>
+                                                    View <ArrowRight className="h-4 w-4" />
+                                                </Link>
                                             </Button>
-                                            <Button
-                                                variant="secondary"
-                                                size="icon"
-                                                className="h-10 w-10 rounded-xl"
-                                                onClick={() => setExportModalId({ id: idea.id, title: idea.title })}
-                                                title="Download PPT Presentation"
-                                            >
-                                                <Presentation className="h-4 w-4" />
-                                            </Button>
+                                            {idea.overall_score && idea.overall_score > 0 ? (
+                                                <>
+                                                    <Button
+                                                        variant="secondary"
+                                                        size="icon"
+                                                        className="h-10 w-10 rounded-xl"
+                                                        onClick={() => handleDownloadPdf(idea.id, idea.title)}
+                                                        disabled={isDownloading === idea.id}
+                                                        title="Download PDF Report"
+                                                    >
+                                                        {isDownloading === idea.id
+                                                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                                                            : <Download className="h-4 w-4" />}
+                                                    </Button>
+                                                    <Button
+                                                        variant="secondary"
+                                                        size="icon"
+                                                        className="h-10 w-10 rounded-xl"
+                                                        onClick={() => setExportModalId({ id: idea.id, title: idea.title })}
+                                                        title="Download PPT Presentation"
+                                                    >
+                                                        <Presentation className="h-4 w-4" />
+                                                    </Button>
+                                                </>
+                                            ) : null}
                                         </>
-                                    ) : null}
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -389,6 +428,16 @@ export default function IdeasPage() {
                 onOpenChange={(open) => { if (!open) setExportModalId(null) }}
                 ideaId={exportModalId.id}
                 ideaTitle={exportModalId.title}
+            />
+        )}
+
+        {/* PDF Export Modal */}
+        {pdfExportModalId && (
+            <PdfExportModal
+                open={!!pdfExportModalId}
+                onOpenChange={(open) => { if (!open) setPdfExportModalId(null) }}
+                ideaId={pdfExportModalId.id}
+                ideaTitle={pdfExportModalId.title}
             />
         )}
         </>

@@ -90,6 +90,11 @@ class IdeaAnalysisService:
                 stage_name = stage_def["name"]
                 print(f"[Analysis] Stage {stage_def['number']}/8: {stage_name} for idea #{idea_id}")
 
+                # Track current stage for frontend polling
+                idea.current_stage = stage_def["number"]
+                idea.current_stage_name = stage_name
+                idea.save()
+
                 if stage_def["context_stages"] == "ALL":
                     previous = results.copy()
                 elif stage_def["context_stages"]:
@@ -215,12 +220,12 @@ class IdeaAnalysisService:
     @staticmethod
     def _get_market_research(user_idea):
         try:
-            industry = user_idea.get("industry", "")
-            title = user_idea.get("title", "")
+            industry = (user_idea.get("industry", "") or "")[:80]
+            title = (user_idea.get("title", "") or "")[:60]
 
             queries = [
                 f"{title} software market size 2025",
-                f"AI {industry} personalization market size CAGR 2024 2025",
+                f"AI {industry} market size CAGR 2024 2025",
                 f"{title} {industry} market growth trends 2025",
             ]
 
@@ -246,8 +251,8 @@ class IdeaAnalysisService:
     @staticmethod
     def _get_competitor_research(user_idea):
         try:
-            industry = user_idea.get("industry", "")
-            title = user_idea.get("title", "")
+            industry = (user_idea.get("industry", "") or "")[:80]
+            title = (user_idea.get("title", "") or "")[:60]
 
             queries = [
                 f"{title} competitors 2025",

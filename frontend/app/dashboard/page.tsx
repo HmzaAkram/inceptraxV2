@@ -1,15 +1,20 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { StatCardSkeleton, IdeaCardSkeleton } from "@/components/ui/skeleton"
-import { Lightbulb, TrendingUp, BarChart3, ArrowRight, Plus, Sparkles, ExternalLink } from "lucide-react"
+import {
+  Lightbulb, TrendingUp, BarChart3, ArrowRight, Plus, Sparkles,
+  ExternalLink, Loader2, AlertTriangle, RotateCcw
+} from "lucide-react"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
 import { cn } from "@/lib/utils"
 import { usePageTransition } from "@/hooks/usePageTransition"
+import { toast } from "sonner"
 
 interface Stat { name: string; value: string; icon: any; change: string }
 interface Idea { id: number; title: string; created_at: string; overall_score: number; status: string }
@@ -31,28 +36,71 @@ function getScoreBadge(score: number) {
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const pageRef = usePageTransition()
   const [stats, setStats] = useState<Stat[]>([])
   const [recentIdeas, setRecentIdeas] = useState<Idea[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [retryingId, setRetryingId] = useState<number | null>(null)
+
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      const [statsData, ideasData] = await Promise.all([
+        apiFetch("/users/stats"),
+        apiFetch("/ideas/"),
+      ])
+      setStats(statsData.data.stats.map((s: any) => ({ ...s, icon: iconMap[s.icon] || Lightbulb })))
+      setRecentIdeas(ideasData.data.ideas.slice(0, 4))
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    async function fetchDashboardData() {
-      try {
-        const [statsData, ideasData] = await Promise.all([
-          apiFetch("/users/stats"),
-          apiFetch("/ideas/"),
-        ])
-        setStats(statsData.data.stats.map((s: any) => ({ ...s, icon: iconMap[s.icon] || Lightbulb })))
-        setRecentIdeas(ideasData.data.ideas.slice(0, 4))
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
     fetchDashboardData()
-  }, [])
+  }, [fetchDashboardData])
+
+  // Auto-refresh when any idea is still processing
+  useEffect(() => {
+    const hasProcessing = recentIdeas.some(i => i.status === "processing")
+    if (!hasProcessing) return
+
+    const interval = setInterval(async () => {
+      try {
+        const ideasData = await apiFetch("/ideas/")
+        setRecentIdeas(ideasData.data.ideas.slice(0, 4))
+      } catch { /* silent */ }
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [recentIdeas])
+
+  const handleRetry = async (ideaId: number) => {
+    setRetryingId(ideaId)
+    try {
+      await apiFetch(`/ideas/${ideaId}/reanalyze`, { method: "POST" })
+      toast.success("Re-analysis started! Redirecting to progress tracker…")
+      // Update the local state immediately
+      setRecentIdeas(prev =>
+        prev.map(i => i.id === ideaId ? { ...i, status: "processing" } : i)
+      )
+      // Navigate to the progress/stage tracker page
+      setTimeout(() => {
+        router.push(`/dashboard/idea/${ideaId}/progress`)
+      }, 500)
+    } catch (err: any) {
+      toast.error(err.message || "Failed to retry analysis")
+    } finally {
+      setRetryingId(null)
+    }
+  }
+
+  const getIdeaHref = (idea: Idea) => {
+    if (idea.status === "processing") return `/dashboard/idea/${idea.id}/progress`
+    return `/dashboard/idea/${idea.id}/validation`
+  }
 
   return (
     <div ref={pageRef} className="space-y-8 max-w-6xl mx-auto">
@@ -115,35 +163,105 @@ export default function DashboardPage() {
               </div>
             ) : recentIdeas.length > 0 ? (
               <div className="divide-y divide-border">
-                {recentIdeas.map((idea) => (
-                  <Link
-                    key={idea.id}
-                    href={`/dashboard/idea/${idea.id}/validation`}
-                    className="group flex items-center justify-between px-6 py-4 hover:bg-muted/40 transition-colors duration-150"
-                  >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                        <Lightbulb className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{idea.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {new Date(idea.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2.5 shrink-0">
-                      {idea.overall_score > 0 && (
-                        <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full tabular-nums", getScoreBadge(idea.overall_score))}>
-                          {idea.overall_score}
-                        </span>
+                {recentIdeas.map((idea) => {
+                  const isProcessing = idea.status === "processing"
+                  const isFailed = idea.status === "failed"
+                  const isRetrying = retryingId === idea.id
+
+                  return (
+                    <div
+                      key={idea.id}
+                      className={cn(
+                        "group flex items-center justify-between px-6 py-4 transition-colors duration-150",
+                        isFailed
+                          ? "bg-red-50/50 dark:bg-red-950/10"
+                          : isProcessing
+                          ? "bg-amber-50/30 dark:bg-amber-950/10"
+                          : "hover:bg-muted/40"
                       )}
-                      <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-full capitalize", STATUS_STYLES[idea.status] || STATUS_STYLES.pending)}>
-                        {idea.status}
-                      </span>
+                    >
+                      {/* Left: icon + text */}
+                      <Link
+                        href={getIdeaHref(idea)}
+                        className="flex items-center gap-3 min-w-0 flex-1"
+                      >
+                        <div className={cn(
+                          "h-9 w-9 rounded-lg flex items-center justify-center shrink-0",
+                          isFailed
+                            ? "bg-red-100 dark:bg-red-900/30"
+                            : isProcessing
+                            ? "bg-amber-100 dark:bg-amber-900/30"
+                            : "bg-muted"
+                        )}>
+                          {isProcessing ? (
+                            <Loader2 className="h-4 w-4 text-amber-600 dark:text-amber-400 animate-spin" />
+                          ) : isFailed ? (
+                            <AlertTriangle className="h-4 w-4 text-red-500" />
+                          ) : (
+                            <Lightbulb className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{idea.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {isProcessing
+                              ? "AI analysis in progress…"
+                              : isFailed
+                              ? "Analysis failed — click retry to try again"
+                              : new Date(idea.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                          </p>
+                        </div>
+                      </Link>
+
+                      {/* Right: status + actions */}
+                      <div className="flex items-center gap-2.5 shrink-0 ml-3">
+                        {/* Score badge — only for completed */}
+                        {idea.status === "completed" && idea.overall_score > 0 && (
+                          <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full tabular-nums", getScoreBadge(idea.overall_score))}>
+                            {idea.overall_score}
+                          </span>
+                        )}
+
+                        {/* Processing: animated badge */}
+                        {isProcessing && (
+                          <span className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/30">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Processing
+                          </span>
+                        )}
+
+                        {/* Failed: retry button */}
+                        {isFailed && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 gap-1.5 rounded-lg text-xs font-semibold border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleRetry(idea.id)
+                            }}
+                            disabled={isRetrying}
+                          >
+                            {isRetrying ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            )}
+                            Retry
+                          </Button>
+                        )}
+
+                        {/* Status badge for completed */}
+                        {idea.status === "completed" && (
+                          <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-full capitalize", STATUS_STYLES.completed)}>
+                            completed
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </Link>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-center gap-4 px-6">

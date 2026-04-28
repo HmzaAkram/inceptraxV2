@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Sparkles } from "lucide-react"
+import { Logo } from "@/components/logo"
 
 export function Footer() {
   return (
@@ -8,9 +8,7 @@ export function Footer() {
         <div className="grid gap-12 lg:grid-cols-4">
           <div className="lg:col-span-1">
             <Link href="/" className="flex items-center gap-2 font-bold text-xl mb-6">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Sparkles className="h-5 w-5" />
-              </div>
+              <Logo size={32} />
               <span>Inceptrax</span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
@@ -56,12 +54,12 @@ export function Footer() {
             <h4 className="font-bold mb-6">Legal</h4>
             <ul className="space-y-4 text-sm text-muted-foreground">
               <li>
-                <Link href="/privacy" className="hover:text-primary">
+                <Link href="/privacy-policy" className="hover:text-primary">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="hover:text-primary">
+                <Link href="/terms-of-service" className="hover:text-primary">
                   Terms of Service
                 </Link>
               </li>

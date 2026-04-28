@@ -8,7 +8,6 @@ import { ShieldCheck, ShieldAlert, Zap, Loader2, ArrowLeft, ArrowRight } from "l
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
-import { ExpandableText } from "@/components/ui/expandable-text"
 
 export default function CompetitorAnalysisPage() {
   const params = useParams()
@@ -70,14 +69,14 @@ export default function CompetitorAnalysisPage() {
         {(competitors || []).map((comp: any, i: number) => (
           <Card
             key={comp.name}
-            className="border border-border shadow-sm bg-card"
+            className="border border-border shadow-sm bg-card overflow-hidden"
           >
-            <CardContent className="p-6 space-y-6">
+            <CardContent className="p-6 space-y-6 overflow-hidden">
               {/* HEADER */}
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="space-y-1">
+                <div className="space-y-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-xl font-bold">{comp.name || "Unknown Competitor"}</h3>
+                    <h3 className="text-xl font-bold break-words">{comp.name || "Unknown Competitor"}</h3>
                     <Badge variant={comp.type === "Direct" ? "default" : "secondary"}>
                       {comp.type || "N/A"}
                     </Badge>
@@ -99,9 +98,9 @@ export default function CompetitorAnalysisPage() {
 
               {/* STRENGTHS & WEAKNESSES */}
               <div className="grid md:grid-cols-2 gap-8">
-                <div>
+                <div className="min-w-0">
                   <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-3">
-                    <ShieldCheck className="h-4 w-4 text-green-500" />
+                    <ShieldCheck className="h-4 w-4 text-green-500 shrink-0" />
                     Strengths
                   </h4>
 
@@ -109,9 +108,7 @@ export default function CompetitorAnalysisPage() {
                     {(comp.strengths || []).map((s: string, j: number) => (
                       <li key={j} className="flex gap-3 items-start text-sm text-muted-foreground">
                         <span className="mt-2 h-2 w-2 rounded-full bg-green-500 shrink-0" />
-                        <div className="min-w-0">
-                          <ExpandableText text={s} lines={2} />
-                        </div>
+                        <span className="min-w-0 break-words leading-relaxed" style={{ overflowWrap: 'anywhere' }}>{s}</span>
                       </li>
                     ))}
                     {(!comp.strengths || comp.strengths.length === 0) && (
@@ -120,9 +117,9 @@ export default function CompetitorAnalysisPage() {
                   </ul>
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-3">
-                    <ShieldAlert className="h-4 w-4 text-amber-500" />
+                    <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" />
                     Weaknesses
                   </h4>
 
@@ -130,9 +127,7 @@ export default function CompetitorAnalysisPage() {
                     {(comp.weaknesses || []).map((w: string, j: number) => (
                       <li key={j} className="flex gap-3 items-start text-sm text-muted-foreground">
                         <span className="mt-2 h-2 w-2 rounded-full bg-amber-500 shrink-0" />
-                        <div className="min-w-0">
-                          <ExpandableText text={w} lines={2} />
-                        </div>
+                        <span className="min-w-0 break-words leading-relaxed" style={{ overflowWrap: 'anywhere' }}>{w}</span>
                       </li>
                     ))}
                     {(!comp.weaknesses || comp.weaknesses.length === 0) && (
@@ -152,14 +147,14 @@ export default function CompetitorAnalysisPage() {
       </div>
 
       {/* EDGE */}
-      <Card className="border-none shadow-sm bg-secondary text-secondary-foreground">
+      <Card className="border-none shadow-sm bg-secondary text-secondary-foreground overflow-hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5" /> Your Competitive Edge
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="leading-relaxed font-medium">
+        <CardContent className="overflow-hidden">
+          <p className="leading-relaxed font-medium break-words" style={{ overflowWrap: 'anywhere' }}>
             Based on the analysis of {(competitors || []).length} competitors, your
             unique advantage lies in the specific solution proposed for{" "}
             {idea.title}.

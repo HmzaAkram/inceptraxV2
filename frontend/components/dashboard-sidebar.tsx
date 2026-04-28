@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState, useCallback, useRef } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -26,6 +27,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { apiFetch } from "@/lib/api"
 import { Logo } from "@/components/logo"
 
 const navigation = [
@@ -45,10 +47,12 @@ function NavLink({
   item,
   isActive,
   accent = false,
+  badge,
 }: {
   item: NavItem
   isActive: boolean
   accent?: boolean
+  badge?: number | null
 }) {
   return (
     <Link
@@ -80,6 +84,11 @@ function NavLink({
         )}
       />
       <span className="truncate">{item.name}</span>
+      {badge != null && badge > 0 && (
+        <span className="ml-auto h-5 min-w-[20px] px-1.5 rounded-full bg-foreground text-background text-[10px] font-bold flex items-center justify-center shrink-0">
+          {badge > 9 ? "9+" : badge}
+        </span>
+      )}
     </Link>
   )
 }
@@ -94,6 +103,25 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export function DashboardSidebar() {
   const pathname = usePathname()
+  const [unreadMessages, setUnreadMessages] = useState(0)
+  const retryRef = useRef(0)
+
+  const fetchUnread = useCallback(async () => {
+    if (retryRef.current >= 5) return
+    try {
+      const res = await apiFetch("/chat/unread-count")
+      setUnreadMessages(res.unread_count || 0)
+      retryRef.current = 0
+    } catch (err: any) {
+      if (err?.message?.includes("429")) retryRef.current += 1
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchUnread()
+    const interval = setInterval(fetchUnread, 30000)
+    return () => clearInterval(interval)
+  }, [fetchUnread])
 
   const ideaMatch = pathname.match(/\/dashboard\/idea\/([^\/]+)/)
   const currentIdeaId = ideaMatch ? ideaMatch[1] : null
@@ -152,6 +180,7 @@ export function DashboardSidebar() {
                 key={item.name}
                 item={item}
                 isActive={pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href) && !currentIdeaId)}
+                badge={item.href === "/dashboard/chat" ? unreadMessages : null}
               />
             ))}
           </nav>

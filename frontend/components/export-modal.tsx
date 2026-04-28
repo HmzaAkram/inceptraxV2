@@ -16,84 +16,67 @@ interface ExportModalProps {
   ideaTitle: string
 }
 
-type ThemeKey = "dark_executive" | "clean_light" | "gradient_bold"
-
-const TEMPLATES: {
-  key: ThemeKey
-  name: string
-  description: string
-  bestFor: string
-  preview: { bg: string; accent: string; text: string; card: string }
-}[] = [
-  {
-    key: "dark_executive",
-    name: "Dark Executive",
-    description: "Premium, investor-ready dark theme with high contrast.",
-    bestFor: "Investor pitches, serious presentations",
-    preview: { bg: "#0A0A14", accent: "#6366F1", text: "#F1F5F9", card: "#111827" },
-  },
-  {
-    key: "clean_light",
-    name: "Clean Light",
-    description: "Clean, minimal and professional white layout.",
-    bestFor: "Corporate, accelerators, demo days",
-    preview: { bg: "#FFFFFF", accent: "#6366F1", text: "#0F172A", card: "#F8FAFC" },
-  },
-  {
-    key: "gradient_bold",
-    name: "Gradient Bold",
-    description: "Modern tech startup aesthetic with vibrant cyan accents.",
-    bestFor: "Tech competitions, hackathons, demo pitches",
-    preview: { bg: "#0D1117", accent: "#00D4FF", text: "#FFFFFF", card: "#161B22" },
-  },
+const SECTIONS = [
+  { key: "executive_summary", label: "Executive Summary" },
+  { key: "market_analysis", label: "Market Analysis" },
+  { key: "competitor_analysis", label: "Competitor Analysis" },
+  { key: "financial_projections", label: "Financial Projections" },
+  { key: "business_model", label: "Business Model" },
+  { key: "risk_assessment", label: "Risk Assessment" },
+  { key: "investor_pitch", label: "Investor Pitch" },
 ]
 
-function ThemePreview({ preview }: { preview: (typeof TEMPLATES)[0]["preview"] }) {
-  return (
-    <div
-      className="w-full h-24 rounded-lg overflow-hidden relative flex-shrink-0"
-      style={{ background: preview.bg, border: `1.5px solid ${preview.accent}33` }}
-    >
-      {/* Top accent bar */}
-      <div className="absolute top-0 left-0 right-0 h-1.5" style={{ background: preview.accent }} />
-      {/* Fake slide content */}
-      <div className="px-3 pt-3 space-y-1.5">
-        <div className="h-2 w-2/3 rounded-sm" style={{ background: preview.text, opacity: 0.9 }} />
-        <div className="h-1.5 w-1/2 rounded-sm" style={{ background: preview.text, opacity: 0.4 }} />
-        {/* Card */}
-        <div className="h-8 rounded-sm mt-1" style={{ background: preview.card, border: `0.5px solid ${preview.accent}44` }}>
-          <div className="h-full flex items-center gap-1.5 px-2">
-            <div className="h-1.5 w-1.5 rounded-full" style={{ background: preview.accent }} />
-            <div className="h-1 w-12 rounded-sm" style={{ background: preview.text, opacity: 0.5 }} />
-          </div>
-        </div>
-      </div>
-      {/* Bottom slide number */}
-      <div className="absolute bottom-1.5 right-2.5">
-        <div className="h-1 w-2 rounded-sm" style={{ background: preview.text, opacity: 0.3 }} />
-      </div>
-    </div>
-  )
-}
+const COLOR_THEMES = [
+  { key: "midnight_black", label: "Midnight Black", preview: { bg: "#0A0A14", accent: "#6366F1", text: "#F1F5F9" } },
+  { key: "pure_white", label: "Pure White", preview: { bg: "#FFFFFF", accent: "#1F2937", text: "#0F172A" } },
+  { key: "charcoal_gray", label: "Charcoal Gray", preview: { bg: "#1F2937", accent: "#9CA3AF", text: "#F9FAFB" } },
+  { key: "navy_white", label: "Navy & White", preview: { bg: "#0F172A", accent: "#3B82F6", text: "#F1F5F9" } },
+  { key: "forest_green", label: "Forest Green", preview: { bg: "#064E3B", accent: "#10B981", text: "#ECFDF5" } },
+]
+
+const FONTS = ["Inter", "Georgia", "Playfair Display", "Roboto", "Montserrat"]
+
+const LAYOUTS = [
+  { key: "minimal", label: "Minimal" },
+  { key: "bold", label: "Bold" },
+  { key: "corporate", label: "Corporate" },
+  { key: "creative", label: "Creative" },
+]
 
 export function ExportModal({ open, onOpenChange, ideaId, ideaTitle }: ExportModalProps) {
-  const [selectedTheme, setSelectedTheme] = useState<ThemeKey | null>(null)
+  const [selectedSections, setSelectedSections] = useState<string[]>(SECTIONS.map(s => s.key))
+  const [selectedTheme, setSelectedTheme] = useState("midnight_black")
+  const [selectedFont, setSelectedFont] = useState("Inter")
+  const [selectedLayout, setSelectedLayout] = useState("minimal")
+  const [includeCharts, setIncludeCharts] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
 
+  const toggleSection = (key: string) => {
+    setSelectedSections(prev =>
+      prev.includes(key) ? prev.filter(s => s !== key) : [...prev, key]
+    )
+  }
+
   const handleGenerate = async () => {
-    if (!selectedTheme || isGenerating) return
+    if (selectedSections.length === 0) {
+      toast.error("Select at least one section")
+      return
+    }
     setIsGenerating(true)
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/ideas/${ideaId}/export/ppt`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ theme: selectedTheme }),
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            theme: selectedTheme,
+            sections: selectedSections,
+            font: selectedFont,
+            layout: selectedLayout,
+            include_charts: includeCharts,
+          }),
         }
       )
       if (!res.ok) {
@@ -120,62 +103,139 @@ export function ExportModal({ open, onOpenChange, ideaId, ideaTitle }: ExportMod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden">
+      <DialogContent className="max-w-2xl p-0 overflow-hidden max-h-[90vh]">
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold flex items-center gap-2">
               <Presentation className="h-5 w-5 text-primary" />
-              Choose Your Presentation Style
+              Export Presentation
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              Select a theme that matches your audience. All real analysis data will be included.
+              Customize your investor deck — sections, theme, font, and layout.
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        {/* Template Cards */}
-        <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {TEMPLATES.map((tpl) => {
-            const selected = selectedTheme === tpl.key
-            return (
-              <button
-                key={tpl.key}
-                onClick={() => setSelectedTheme(tpl.key)}
-                className={cn(
-                  "relative text-left rounded-xl border-2 p-3 transition-all duration-150 focus:outline-none",
-                  selected
-                    ? "border-primary shadow-md shadow-primary/10"
-                    : "border-border hover:border-primary/40 hover:shadow-sm"
-                )}
+        <div className="px-6 py-5 space-y-6 overflow-y-auto max-h-[60vh]">
+          {/* Section Checkboxes */}
+          <div>
+            <h4 className="text-sm font-semibold mb-3">Include Sections</h4>
+            <div className="grid grid-cols-2 gap-2">
+              {SECTIONS.map(section => (
+                <label
+                  key={section.key}
+                  className={cn(
+                    "flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all text-sm",
+                    selectedSections.includes(section.key)
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/40"
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedSections.includes(section.key)}
+                    onChange={() => toggleSection(section.key)}
+                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                  />
+                  <span className="font-medium">{section.label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-2">
+              <button type="button" onClick={() => setSelectedSections(SECTIONS.map(s => s.key))} className="text-xs text-primary hover:underline">Select all</button>
+              <span className="text-xs text-muted-foreground">·</span>
+              <button type="button" onClick={() => setSelectedSections([])} className="text-xs text-muted-foreground hover:underline">Clear all</button>
+            </div>
+          </div>
+
+          {/* Color Theme */}
+          <div>
+            <h4 className="text-sm font-semibold mb-3">Color Theme</h4>
+            <div className="grid grid-cols-5 gap-2">
+              {COLOR_THEMES.map(theme => {
+                const selected = selectedTheme === theme.key
+                return (
+                  <button
+                    key={theme.key}
+                    onClick={() => setSelectedTheme(theme.key)}
+                    className={cn(
+                      "relative flex flex-col items-center gap-1.5 p-2 rounded-lg border-2 transition-all",
+                      selected ? "border-primary shadow-md" : "border-border hover:border-primary/40"
+                    )}
+                  >
+                    <div
+                      className="w-full h-8 rounded-md flex items-center justify-center"
+                      style={{ background: theme.preview.bg, border: `1px solid ${theme.preview.accent}44` }}
+                    >
+                      <div className="h-1.5 w-6 rounded-sm" style={{ background: theme.preview.accent }} />
+                    </div>
+                    <span className="text-[10px] font-medium leading-tight text-center">{theme.label}</span>
+                    {selected && (
+                      <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                        <Check className="h-2.5 w-2.5 text-white" />
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Font + Layout row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Font</h4>
+              <select
+                value={selectedFont}
+                onChange={e => setSelectedFont(e.target.value)}
+                className="w-full h-10 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                {/* Check badge */}
-                {selected && (
-                  <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                    <Check className="h-3 w-3 text-white" />
-                  </div>
-                )}
+                {FONTS.map(font => (
+                  <option key={font} value={font}>{font}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Slide Layout</h4>
+              <select
+                value={selectedLayout}
+                onChange={e => setSelectedLayout(e.target.value)}
+                className="w-full h-10 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {LAYOUTS.map(layout => (
+                  <option key={layout.key} value={layout.key}>{layout.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-                <ThemePreview preview={tpl.preview} />
-
-                <div className="mt-3 space-y-1">
-                  <p className="text-sm font-semibold leading-none">{tpl.name}</p>
-                  <p className="text-xs text-muted-foreground leading-snug">{tpl.description}</p>
-                  <p className="text-[10px] text-muted-foreground/70 mt-1">
-                    <span className="font-medium">Best for:</span> {tpl.bestFor}
-                  </p>
-                </div>
-              </button>
-            )
-          })}
+          {/* Include Charts Toggle */}
+          <div className="flex items-center justify-between p-3 rounded-lg border">
+            <div>
+              <p className="text-sm font-semibold">Include Charts / Visuals</p>
+              <p className="text-xs text-muted-foreground">Add visual data representations to slides</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIncludeCharts(!includeCharts)}
+              className={cn(
+                "relative h-6 w-11 rounded-full transition-colors",
+                includeCharts ? "bg-primary" : "bg-muted"
+              )}
+            >
+              <span className={cn(
+                "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
+                includeCharts ? "translate-x-5" : "translate-x-0.5"
+              )} />
+            </button>
+          </div>
         </div>
 
         {/* Footer */}
         <div className="px-6 pb-5 flex items-center justify-between gap-3 border-t pt-4">
           <p className="text-xs text-muted-foreground">
-            {selectedTheme
-              ? `Selected: ${TEMPLATES.find((t) => t.key === selectedTheme)?.name}`
-              : "No template selected"}
+            {selectedSections.length} sections · {COLOR_THEMES.find(t => t.key === selectedTheme)?.label}
           </p>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={isGenerating}>
@@ -183,7 +243,7 @@ export function ExportModal({ open, onOpenChange, ideaId, ideaTitle }: ExportMod
             </Button>
             <Button
               size="sm"
-              disabled={!selectedTheme || isGenerating}
+              disabled={selectedSections.length === 0 || isGenerating}
               onClick={handleGenerate}
               className="gap-2 min-w-[11rem]"
             >

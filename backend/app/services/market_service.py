@@ -20,6 +20,10 @@ class MarketService:
         if not api_key:
             return None
 
+        # Tavily max query length is 400 characters — truncate at word boundary
+        if len(query) > 380:
+            query = query[:380].rsplit(' ', 1)[0]
+
         try:
             response = requests.post(
                 "https://api.tavily.com/search",
@@ -159,8 +163,8 @@ class MarketService:
         if not idea:
             return None
 
-        industry = idea.industry or idea.market or "technology"
-        title = idea.title or "startup"
+        industry = (idea.industry or idea.market or "technology")[:80]
+        title = (idea.title or "startup")[:60]
 
         queries = [
             f"{industry} market size and growth rate 2024 2025",

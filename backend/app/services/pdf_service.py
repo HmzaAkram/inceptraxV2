@@ -148,10 +148,30 @@ def _build_styles():
 # ─── Helper Utilities ──────────────────────────────────────────────────────────
 
 def _parse_str(raw, fallback="") -> str:
-    if not raw:
+    """Safely convert any value to a clean display string."""
+    if not raw and raw != 0:
         return fallback
-    if isinstance(raw, (dict, list)):
-        return ""
+    if isinstance(raw, str):
+        # Handle JSON-encoded strings
+        stripped = raw.strip()
+        if stripped.startswith('{') or stripped.startswith('['):
+            try:
+                parsed = json.loads(stripped)
+                return _parse_str(parsed, fallback)
+            except Exception:
+                pass
+        return stripped
+    if isinstance(raw, dict):
+        # Try common text keys first
+        for key in ("text", "value", "description", "content", "summary", "name", "title", "label", "step"):
+            if raw.get(key) and isinstance(raw[key], str):
+                return str(raw[key]).strip()
+        # Fall back to joining all scalar values
+        parts = [str(v) for v in raw.values() if v and not isinstance(v, (dict, list))]
+        return " — ".join(parts) if parts else fallback
+    if isinstance(raw, list):
+        parts = [_parse_str(i) for i in raw[:3] if i]
+        return ", ".join(p for p in parts if p) if parts else fallback
     return str(raw).strip()
 
 
@@ -159,11 +179,35 @@ def _parse_list(raw, max_items=8):
     if not raw:
         return []
     if isinstance(raw, list):
-        return [str(i).strip() for i in raw[:max_items] if i]
+        out = []
+        for i in raw[:max_items]:
+            if not i:
+                continue
+            if isinstance(i, str):
+                out.append(i.strip())
+            elif isinstance(i, dict):
+                # Try common text keys
+                for k in ('text', 'title', 'name', 'description', 'value', 'step', 'feature', 'task'):
+                    if i.get(k):
+                        out.append(str(i[k]).strip())
+                        break
+                else:
+                    parts = [str(v) for v in i.values() if v and isinstance(v, str)]
+                    if parts:
+                        out.append(parts[0])
+            else:
+                out.append(str(i))
+        return out
     if isinstance(raw, str):
         lines = [l.strip().lstrip("•-*1234567890.) ") for l in raw.split("\n") if l.strip()]
         return lines[:max_items]
+    if isinstance(raw, dict):
+        for v in raw.values():
+            if isinstance(v, list):
+                return _parse_list(v, max_items)
+        return []
     return []
+
 
 
 def _get_stage(analysis_data: dict, stage_name: str) -> dict:
@@ -446,11 +490,18 @@ def _build_competitors(data, styles):
         for comp in competitors[:8]:
             if not isinstance(comp, dict):
                 continue
+            # Handle both singular and plural key names for weakness
+            weakness_val = comp.get("weakness") or comp.get("key_weakness") or ""
+            if not weakness_val:
+                wlist = comp.get("weaknesses") or []
+                if isinstance(wlist, list) and wlist:
+                    weakness_val = wlist[0] if isinstance(wlist[0], str) else _parse_str(wlist[0])
+
             row = [
                 Paragraph(_parse_str(comp.get("name") or comp.get("competitor"))[:35], styles["table_cell"]),
                 Paragraph(_parse_str(comp.get("type") or comp.get("category"))[:20], styles["table_cell"]),
                 Paragraph(_parse_str(comp.get("threat_level") or comp.get("threat"))[:15], styles["table_cell"]),
-                Paragraph(_parse_str(comp.get("weakness") or comp.get("key_weakness"))[:80], styles["table_cell"]),
+                Paragraph(_parse_str(weakness_val)[:120], styles["table_cell"]),
             ]
             t_data.append(row)
 
@@ -707,6 +758,7 @@ def _build_final_report(data, styles):
 def generate_analysis_pdf(analysis_data: dict) -> str:
     """
     Generate a professional branded PDF report.
+    Respects _export_sections for filtering and _export_font for typography.
     Returns absolute path to the generated PDF.
     """
     idea_id = analysis_data.get("id", "unknown")
@@ -727,45 +779,43 @@ def generate_analysis_pdf(analysis_data: dict) -> str:
         rightMargin=MARGIN,
     )
 
+    # Section filtering: map frontend keys to builder functions
+    section_builders = {
+        "executive_summary": _build_validation,
+        "market_analysis": _build_market,
+        "competitor_analysis": _build_competitors,
+        "financial_projections": _build_monetization,
+        "business_model": _build_mvp,
+        "risk_assessment": _build_gtm,
+        "investor_pitch": _build_final_report,
+    }
+
+    selected = analysis_data.get("_export_sections")
+
     elements = []
-    elements += _build_cover(analysis_data, styles)
-    elements += _build_validation(analysis_data, styles)
-    elements += _build_market(analysis_data, styles)
-    elements += _build_audience(analysis_data, styles)
-    elements += _build_competitors(analysis_data, styles)
-    elements += _build_monetization(analysis_data, styles)
-    elements += _build_mvp(analysis_data, styles)
-    elements += _build_gtm(analysis_data, styles)
-    elements += _build_final_report(analysis_data, styles)
+    elements += _build_cover(analysis_data, styles)  # Always include cover
+
+    if selected and isinstance(selected, list):
+        # Only build selected sections
+        for key in selected:
+            builder = section_builders.get(key)
+            if builder:
+                elements += builder(analysis_data, styles)
+        # Also include audience if market_analysis is selected
+        if "market_analysis" in selected:
+            elements += _build_audience(analysis_data, styles)
+    else:
+        # Build all sections (default)
+        elements += _build_validation(analysis_data, styles)
+        elements += _build_market(analysis_data, styles)
+        elements += _build_audience(analysis_data, styles)
+        elements += _build_competitors(analysis_data, styles)
+        elements += _build_monetization(analysis_data, styles)
+        elements += _build_mvp(analysis_data, styles)
+        elements += _build_gtm(analysis_data, styles)
+        elements += _build_final_report(analysis_data, styles)
 
     doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
     return out_path
 
 
-# ─── Legacy compatibility shim ────────────────────────────────────────────────
-
-class PDFService:
-    """Backwards-compatible shim for existing route that calls PDFService.generate_report()."""
-
-    @staticmethod
-    def generate_report(idea) -> str:
-        from app.models.user_model import StageResult
-        import json
-
-        stages = {}
-        for sr in (idea.stage_results or []):
-            try:
-                stages[sr.stage_name] = json.loads(sr.result_json or "{}")
-            except Exception:
-                stages[sr.stage_name] = {}
-
-        data = {
-            "id": idea.id,
-            "title": idea.title,
-            "description": idea.description,
-            "one_liner": idea.one_liner if hasattr(idea, "one_liner") else "",
-            "industry": idea.industry or idea.market or "",
-            "overall_score": idea.overall_score or 0,
-            "stages": stages,
-        }
-        return generate_analysis_pdf(data)

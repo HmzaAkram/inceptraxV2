@@ -1,11 +1,13 @@
 from flask import Blueprint, request, jsonify
 from app.models.user_model import Message, User, BlockedUser, Notification
 from app.middleware.auth_middleware import token_required
+from app import limiter
 
 chat_bp = Blueprint('chat', __name__)
 
 
 @chat_bp.route('/conversations', methods=['GET'])
+@limiter.limit("120/minute")
 @token_required
 def get_conversations(current_user):
     """Get list of all conversations (unique users you've chatted with)."""
@@ -116,6 +118,7 @@ def send_message(current_user, partner_id):
 
 
 @chat_bp.route('/unread-count', methods=['GET'])
+@limiter.limit("120/minute")
 @token_required
 def get_unread_count(current_user):
     """Get total unread message count for the current user."""

@@ -58,6 +58,77 @@ THEMES = {
         "cover_bg":  "0D1117",
         "name":      "Gradient Bold",
     },
+    # ─── New themes matching frontend export modal ─────────────────────────
+    "midnight_black": {
+        "bg":        "0A0A14",
+        "card":      "111827",
+        "accent":    "6366F1",
+        "accent2":   "8B5CF6",
+        "text":      "F1F5F9",
+        "muted":     "94A3B8",
+        "border":    "1E2A3A",
+        "success":   "10B981",
+        "warning":   "F59E0B",
+        "danger":    "EF4444",
+        "cover_bg":  "0A0A14",
+        "name":      "Midnight Black",
+    },
+    "pure_white": {
+        "bg":        "FFFFFF",
+        "card":      "F8FAFC",
+        "accent":    "1F2937",
+        "accent2":   "374151",
+        "text":      "0F172A",
+        "muted":     "6B7280",
+        "border":    "E5E7EB",
+        "success":   "059669",
+        "warning":   "D97706",
+        "danger":    "DC2626",
+        "cover_bg":  "F9FAFB",
+        "name":      "Pure White",
+    },
+    "charcoal_gray": {
+        "bg":        "1F2937",
+        "card":      "374151",
+        "accent":    "9CA3AF",
+        "accent2":   "D1D5DB",
+        "text":      "F9FAFB",
+        "muted":     "9CA3AF",
+        "border":    "4B5563",
+        "success":   "10B981",
+        "warning":   "F59E0B",
+        "danger":    "EF4444",
+        "cover_bg":  "1F2937",
+        "name":      "Charcoal Gray",
+    },
+    "navy_white": {
+        "bg":        "0F172A",
+        "card":      "1E293B",
+        "accent":    "3B82F6",
+        "accent2":   "60A5FA",
+        "text":      "F1F5F9",
+        "muted":     "94A3B8",
+        "border":    "334155",
+        "success":   "10B981",
+        "warning":   "F59E0B",
+        "danger":    "EF4444",
+        "cover_bg":  "0F172A",
+        "name":      "Navy & White",
+    },
+    "forest_green": {
+        "bg":        "064E3B",
+        "card":      "065F46",
+        "accent":    "10B981",
+        "accent2":   "34D399",
+        "text":      "ECFDF5",
+        "muted":     "A7F3D0",
+        "border":    "047857",
+        "success":   "34D399",
+        "warning":   "FBBF24",
+        "danger":    "F87171",
+        "cover_bg":  "064E3B",
+        "name":      "Forest Green",
+    },
 }
 
 # ─── Helper Utilities ──────────────────────────────────────────────────────────
@@ -134,22 +205,67 @@ def _score_color(score, theme):
 
 
 def _parse_list(raw, max_items=6):
-    """Safely extract a list from a raw value (list, str, or None). Returns list of strings."""
+    """Safely extract a list from a raw value (list, str, dict, or None). Returns list of strings."""
     if not raw:
         return []
     if isinstance(raw, list):
-        return [str(i) for i in raw[:max_items] if i]
+        out = []
+        for i in raw[:max_items]:
+            if not i:
+                continue
+            if isinstance(i, str):
+                out.append(i.strip())
+            elif isinstance(i, dict):
+                # Try common text keys
+                for k in ('text', 'title', 'name', 'description', 'value', 'step', 'feature', 'task'):
+                    if i.get(k):
+                        out.append(str(i[k]).strip())
+                        break
+                else:
+                    parts = [str(v) for v in i.values() if v and isinstance(v, str)]
+                    if parts:
+                        out.append(parts[0])
+            else:
+                out.append(str(i))
+        return out
     if isinstance(raw, str):
-        lines = [l.strip().lstrip("•-*") for l in raw.split("\n") if l.strip()]
+        lines = [l.strip().lstrip("•-*1234567890.) ") for l in raw.split("\n") if l.strip()]
         return lines[:max_items]
+    if isinstance(raw, dict):
+        # Sometimes a dict contains lists
+        for v in raw.values():
+            if isinstance(v, list):
+                return _parse_list(v, max_items)
+        return []
     return []
 
 
 def _parse_str(raw, fallback="") -> str:
-    if not raw:
+    """Safely convert any value to a clean display string."""
+    if not raw and raw != 0:
         return fallback
-    if isinstance(raw, (dict, list)):
-        return ""
+    if isinstance(raw, str):
+        # Handle JSON-encoded strings
+        stripped = raw.strip()
+        if stripped.startswith('{') or stripped.startswith('['):
+            try:
+                import json as _json
+                parsed = _json.loads(stripped)
+                return _parse_str(parsed, fallback)
+            except Exception:
+                pass
+        return stripped
+    if isinstance(raw, dict):
+        # Try common text keys first
+        for key in ("text", "value", "description", "content", "summary", "name", "title", "label", "step"):
+            if raw.get(key) and isinstance(raw[key], str):
+                return str(raw[key]).strip()
+        # Fall back to joining all scalar values
+        parts = [str(v) for v in raw.values() if v and not isinstance(v, (dict, list))]
+        return " — ".join(parts) if parts else fallback
+    if isinstance(raw, list):
+        parts = [_parse_str(i) for i in raw[:3] if i]
+        return ", ".join(p for p in parts if p) if parts else fallback
     return str(raw).strip()
 
 
@@ -431,11 +547,18 @@ def build_competitor_slide(slide, theme: dict, data: dict):
             row_bg = theme["card"] if row_i % 2 == 0 else theme["bg"]
             _add_rect(slide, 0.5, ry, 9.0, 0.42, fill_hex=row_bg, border_hex=theme["border"])
 
+            # Handle both singular and plural key names
+            weakness_val = comp.get("weakness") or comp.get("key_weakness") or ""
+            if not weakness_val:
+                wlist = comp.get("weaknesses") or []
+                if isinstance(wlist, list) and wlist:
+                    weakness_val = wlist[0] if isinstance(wlist[0], str) else _parse_str(wlist[0])
+
             vals = [
-                _parse_str(comp.get("name") or comp.get("competitor"))[:28],
-                _parse_str(comp.get("type") or comp.get("category"))[:15],
-                _parse_str(comp.get("threat_level") or comp.get("threat"))[:10],
-                _parse_str(comp.get("weakness") or comp.get("key_weakness"))[:55],
+                _parse_str(comp.get("name") or comp.get("competitor"))[:40],
+                _parse_str(comp.get("type") or comp.get("category"))[:18],
+                _parse_str(comp.get("threat_level") or comp.get("threat"))[:12],
+                _parse_str(weakness_val)[:100],
             ]
             for cx, cw, val in zip(col_x, col_widths, vals):
                 if val:
@@ -506,7 +629,7 @@ def build_monetization_slide(slide, theme: dict, data: dict):
                           font_size=18, bold=True, color_hex=theme["text"])
             for j, feat in enumerate(features[:3]):
                 fy = 2.52 + j * 0.42
-                _add_text(slide, f"• {feat[:40]}", tx + 0.1, fy, card_w - 0.2, 0.38,
+                _add_text(slide, f"• {feat[:60]}", tx + 0.1, fy, card_w - 0.2, 0.38,
                           font_size=9, color_hex=theme["muted"])
 
     # Key metrics bar
@@ -561,7 +684,7 @@ def build_mvp_slide(slide, theme: dict, data: dict):
             _add_rect(slide, px, 1.62, 2.9, 2.85, fill_hex=theme["card"], border_hex=theme["border"])
             for j, feat in enumerate(features[:4]):
                 fy = 1.72 + j * 0.58
-                _add_text(slide, f"• {feat[:55]}", px + 0.12, fy, 2.7, 0.52,
+                _add_text(slide, f"• {feat[:80]}", px + 0.12, fy, 2.7, 0.52,
                           font_size=9, color_hex=theme["text"], wrap=True)
 
     # Bottom metrics
@@ -670,7 +793,7 @@ def build_closing_slide(slide, theme: dict, data: dict):
             _add_rect(slide, 0.5, ry, 0.06, 0.62, fill_hex=theme["accent"])
             _add_text(slide, f"{i+1}.", 0.65, ry + 0.1, 0.4, 0.42,
                       font_size=12, bold=True, color_hex=theme["accent"])
-            _add_text(slide, rec[:180], 1.12, ry + 0.1, 8.25, 0.48,
+            _add_text(slide, rec[:240], 1.12, ry + 0.1, 8.25, 0.48,
                       font_size=10, color_hex=theme["text"], wrap=True)
 
     # Brand tagline
@@ -682,7 +805,18 @@ def build_closing_slide(slide, theme: dict, data: dict):
 
 # ─── Main Generator ────────────────────────────────────────────────────────────
 
-SLIDE_BUILDERS = [
+# Map frontend section keys to slide builders
+SECTION_BUILDERS = {
+    "executive_summary": [build_cover_slide, build_problem_slide, build_solution_slide],
+    "market_analysis": [build_market_slide, build_audience_slide],
+    "competitor_analysis": [build_competitor_slide],
+    "financial_projections": [build_monetization_slide],
+    "business_model": [build_mvp_slide],
+    "risk_assessment": [build_gtm_slide],
+    "investor_pitch": [build_closing_slide],
+}
+
+ALL_SLIDE_BUILDERS = [
     build_cover_slide,
     build_problem_slide,
     build_solution_slide,
@@ -698,12 +832,14 @@ SLIDE_BUILDERS = [
 
 def generate_investor_ppt(analysis_data: dict, theme_key: str = "dark_executive") -> str:
     """
-    Generate a 10-slide investor deck with the chosen theme.
+    Generate a multi-slide investor deck with the chosen theme.
     Only renders real user data — missing fields are silently skipped.
+
+    Supports _export_sections for selective slide inclusion.
 
     Args:
         analysis_data: dict with idea info + stages dict
-        theme_key: one of 'dark_executive', 'clean_light', 'gradient_bold'
+        theme_key: one of the THEMES keys
 
     Returns:
         Absolute path to the generated .pptx file
@@ -717,8 +853,27 @@ def generate_investor_ppt(analysis_data: dict, theme_key: str = "dark_executive"
 
     blank_layout = prs.slide_layouts[6]  # completely blank
 
-    for builder in SLIDE_BUILDERS:
+    # Determine which builders to use
+    selected_sections = analysis_data.get("_export_sections")
+    if selected_sections and isinstance(selected_sections, list):
+        # Always include cover slide
+        builders = [build_cover_slide]
+        seen = {id(build_cover_slide)}
+        for key in selected_sections:
+            for builder in SECTION_BUILDERS.get(key, []):
+                if id(builder) not in seen:
+                    builders.append(builder)
+                    seen.add(id(builder))
+        # Always include closing slide if investor_pitch is selected or nothing specific
+        if build_closing_slide not in builders:
+            builders.append(build_closing_slide)
+    else:
+        builders = ALL_SLIDE_BUILDERS
+
+    slide_num = 0
+    for builder in builders:
         slide = prs.slides.add_slide(blank_layout)
+        slide_num += 1
         try:
             builder(slide, theme, analysis_data)
         except Exception as e:
@@ -732,31 +887,4 @@ def generate_investor_ppt(analysis_data: dict, theme_key: str = "dark_executive"
     return out_path
 
 
-# ─── Legacy compatibility shim ────────────────────────────────────────────────
 
-class PPTService:
-    """Backwards-compatible shim for existing route that calls PPTService.generate_presentation()."""
-
-    @staticmethod
-    def generate_presentation(idea) -> str:
-        """Build analysis_data from idea ORM object and call generate_investor_ppt."""
-        from app.models.user_model import StageResult
-        import json
-
-        stages = {}
-        for sr in (idea.stage_results or []):
-            try:
-                stages[sr.stage_name] = json.loads(sr.result_json or "{}")
-            except Exception:
-                stages[sr.stage_name] = {}
-
-        data = {
-            "id": idea.id,
-            "title": idea.title,
-            "description": idea.description,
-            "one_liner": idea.one_liner if hasattr(idea, "one_liner") else "",
-            "industry": idea.industry or idea.market or "",
-            "overall_score": idea.overall_score or 0,
-            "stages": stages,
-        }
-        return generate_investor_ppt(data, "dark_executive")

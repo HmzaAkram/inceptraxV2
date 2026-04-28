@@ -29,6 +29,7 @@ import {
 import { apiFetch } from "@/lib/api"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { StageTracker } from "@/components/stage-tracker"
 
 const LAYER_DEFS = [
   { id: "problem",  label: "Problem",       color: "from-red-500 to-orange-500" },
@@ -64,6 +65,10 @@ export default function NewIdeaPage() {
   const [activeLayer, setActiveLayer] = useState<string | null>(null)
   const [completedLayers, setCompletedLayers] = useState<string[]>([])
   const [isReady, setIsReady] = useState(false)
+
+  // Stage tracker state (must be before any early returns — Rules of Hooks)
+  const [analysisIdeaId, setAnalysisIdeaId] = useState<number | null>(null)
+  const [analysisScore, setAnalysisScore] = useState(0)
 
   // ─────────────────────────────────────────────────────────────────────────────
   // State: Seed Form
@@ -355,12 +360,9 @@ export default function NewIdeaPage() {
       })
 
       const ideaId = res.data.idea.id
-      toast.success("Analysis complete!")
-      setPhase("done")
-
-      setTimeout(() => {
-        router.push(`/dashboard/idea/${ideaId}/validation`)
-      }, 1500)
+      setAnalysisIdeaId(ideaId)
+      toast.success("Analysis started! Tracking progress…")
+      // Don't redirect here — the polling useEffect handles it on completion
     } catch (err: any) {
       toast.error(err.message || "Failed to finalize idea")
       setPhase("chatting")
@@ -503,30 +505,31 @@ export default function NewIdeaPage() {
     )
   }
 
+
   // ─────────────────────────────────────────────────────────────────────────────
-  // RENDER: Finalizing / Done
+  // RENDER: Finalizing / Done — Live Stage Tracker
   // ─────────────────────────────────────────────────────────────────────────────
+
   if (phase === "finalizing" || phase === "done") {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] gap-6">
-        <div className="relative">
-          <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-2xl animate-pulse">
-            {phase === "finalizing" ? (
-              <Loader2 className="h-10 w-10 text-white animate-spin" />
-            ) : (
-              <Rocket className="h-10 w-10 text-white" />
-            )}
+      <div className="max-w-2xl mx-auto py-12 px-4">
+        {analysisIdeaId ? (
+          <StageTracker
+            ideaId={analysisIdeaId}
+            onComplete={(score) => {
+              setAnalysisScore(score)
+              setPhase("done")
+              setTimeout(() => {
+                router.push(`/dashboard/idea/${analysisIdeaId}/validation`)
+              }, 2500)
+            }}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-foreground" />
+            <p className="text-sm text-muted-foreground">Submitting your idea…</p>
           </div>
-        </div>
-        <h2 className="text-2xl font-bold text-foreground">
-          {phase === "finalizing" ? "Synthesizing your idea & analyzing..." : "Analysis complete!"}
-        </h2>
-        <p className="text-muted-foreground max-w-md text-center">
-          {phase === "finalizing"
-            ? "Combining your answers into a comprehensive startup profile for deep analysis."
-            : "Taking you to your personalized dashboard now."}
-        </p>
-        <Progress value={phase === "done" ? 100 : 70} className="w-64 h-2" />
+        )}
       </div>
     )
   }

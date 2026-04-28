@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import {
   LogOut,
   Settings,
@@ -8,6 +8,7 @@ import {
   FileText,
   Plus,
   Search,
+  MessageSquare,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -30,10 +31,32 @@ import {
 import { useAuth } from "@/components/auth-provider"
 import { useRouter } from "next/navigation"
 import { NotificationBell } from "@/components/notification-bell"
+import { apiFetch } from "@/lib/api"
 
 export function DashboardHeader() {
   const { user, logout } = useAuth()
   const router = useRouter()
+  const [unreadMessages, setUnreadMessages] = useState(0)
+  const msgRetryRef = useRef(0)
+
+  const fetchUnreadMessages = useCallback(async () => {
+    if (msgRetryRef.current >= 5) return
+    try {
+      const res = await apiFetch("/chat/unread-count")
+      setUnreadMessages(res.unread_count || 0)
+      msgRetryRef.current = 0
+    } catch (err: any) {
+      if (err?.message?.includes("429")) {
+        msgRetryRef.current += 1
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchUnreadMessages()
+    const interval = setInterval(fetchUnreadMessages, 30000)
+    return () => clearInterval(interval)
+  }, [fetchUnreadMessages])
   const [open, setOpen] = useState(false)
 
   const initials = user
@@ -81,6 +104,22 @@ export function DashboardHeader() {
 
         {/* Right actions */}
         <div className="flex items-center gap-2 ml-4">
+          {/* Messages shortcut */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative h-9 w-9"
+            onClick={() => router.push("/dashboard/chat")}
+            aria-label="Messages"
+          >
+            <MessageSquare className="h-4 w-4" />
+            {unreadMessages > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] rounded-full bg-foreground text-background text-[10px] font-bold flex items-center justify-center px-1">
+                {unreadMessages > 9 ? "9+" : unreadMessages}
+              </span>
+            )}
+          </Button>
+
           <NotificationBell />
 
           {/* Avatar + dropdown */}

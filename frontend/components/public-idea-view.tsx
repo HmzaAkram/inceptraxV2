@@ -395,54 +395,115 @@ export function PublicIdeaView({ idea }: PublicIdeaViewProps) {
 
             {/* Research Hub Tab */}
             <TabsContent value="research" className="space-y-8 animate-in fade-in duration-500 outline-none">
-              <Card className="border-2 border-border shadow-none bg-card rounded-3xl">
-                <CardHeader>
-                  <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
-                    <Globe className="h-4 w-4" /> Research Insights
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {researchHub && typeof researchHub === 'object' && Object.keys(researchHub).length > 0 ? (
-                    <div className="space-y-6">
-                      {Array.isArray(researchHub) ? (
-                        researchHub.map((item: any, i: number) => (
-                          <div key={i} className="p-4 rounded-2xl bg-muted/30 border border-border">
-                            <p className="text-sm text-foreground">{typeof item === 'string' ? item : item.title || item.task || JSON.stringify(item)}</p>
-                          </div>
-                        ))
-                      ) : (
-                        Object.entries(researchHub).map(([key, value]: [string, any], i: number) => (
-                          <div key={i} className="p-5 rounded-2xl bg-muted/30 border border-border space-y-2">
-                            <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">{key.replace(/_/g, ' ')}</h4>
-                            {typeof value === 'string' ? (
-                              <p className="text-sm text-foreground leading-relaxed">{value}</p>
-                            ) : Array.isArray(value) ? (
-                              <ul className="space-y-1.5">
-                                {value.map((v: any, j: number) => (
-                                  <li key={j} className="text-sm text-foreground flex gap-2">
-                                    <span className="text-muted-foreground shrink-0">•</span>
-                                    {typeof v === 'string' ? v : v.title || v.name || v.task || JSON.stringify(v)}
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : typeof value === 'object' && value !== null ? (
-                              <div className="space-y-1">
-                                {Object.entries(value).map(([k2, v2]: [string, any], j: number) => (
-                                  <p key={j} className="text-sm text-foreground"><span className="font-semibold">{k2.replace(/_/g, ' ')}:</span> {String(v2)}</p>
-                                ))}
+              {researchHub && typeof researchHub === 'object' && Object.keys(researchHub).length > 0 ? (
+                <div className="space-y-8">
+                  {/* Execution Checklist */}
+                  {Array.isArray(researchHub) ? (
+                    <Card className="border-2 border-border shadow-none bg-card rounded-3xl">
+                      <CardHeader>
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+                          <CheckCircle2 className="h-4 w-4" /> Execution Checklist
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {researchHub.map((item: any, i: number) => {
+                          // Handle checklist items with step/description/phase
+                          if (typeof item === 'object' && item !== null) {
+                            const step = item.step || item.title || item.name || item.task || ''
+                            const description = item.description || item.content || item.summary || ''
+                            const phase = item.phase || ''
+                            return (
+                              <div key={i} className="p-4 rounded-2xl bg-muted/30 border border-border space-y-1.5">
+                                {phase && (
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-primary">{phase}</span>
+                                )}
+                                {step && <p className="text-sm font-bold text-foreground">{step}</p>}
+                                {description && <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>}
+                                {!step && !description && (
+                                  <p className="text-sm text-foreground">
+                                    {Object.values(item).filter(v => typeof v === 'string').join(' — ')}
+                                  </p>
+                                )}
                               </div>
-                            ) : (
-                              <p className="text-sm text-foreground">{String(value)}</p>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
+                            )
+                          }
+                          return (
+                            <div key={i} className="p-4 rounded-2xl bg-muted/30 border border-border">
+                              <p className="text-sm text-foreground">{String(item)}</p>
+                            </div>
+                          )
+                        })}
+                      </CardContent>
+                    </Card>
                   ) : (
-                    <p className="text-muted-foreground text-sm italic">Research hub data will appear after full analysis.</p>
+                    // Object-based hub data (research_links, execution_checklist, etc.)
+                    Object.entries(researchHub).map(([key, value]: [string, any], i: number) => (
+                      <Card key={i} className="border-2 border-border shadow-none bg-card rounded-3xl">
+                        <CardHeader>
+                          <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+                            <Globe className="h-4 w-4" /> {key.replace(/_/g, ' ')}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {typeof value === 'string' ? (
+                            <p className="text-sm text-foreground leading-relaxed">{value}</p>
+                          ) : Array.isArray(value) ? (
+                            value.map((v: any, j: number) => {
+                              if (typeof v === 'string') {
+                                return (
+                                  <div key={j} className="flex gap-2 text-sm text-foreground">
+                                    <span className="text-muted-foreground shrink-0">•</span>
+                                    <span>{v}</span>
+                                  </div>
+                                )
+                              }
+                              if (typeof v === 'object' && v !== null) {
+                                const title = v.step || v.title || v.name || v.task || ''
+                                const desc = v.description || v.content || v.relevance || v.use_case || v.summary || ''
+                                const phase = v.phase || v.category || v.type || ''
+                                return (
+                                  <div key={j} className="p-4 rounded-2xl bg-muted/30 border border-border space-y-1.5">
+                                    {phase && (
+                                      <span className="text-[10px] font-black uppercase tracking-widest text-primary">{phase}</span>
+                                    )}
+                                    {title && <p className="text-sm font-bold text-foreground">{title}</p>}
+                                    {desc && <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>}
+                                    {!title && !desc && (
+                                      <p className="text-sm text-foreground">
+                                        {Object.values(v).filter((val: any) => typeof val === 'string').join(' — ')}
+                                      </p>
+                                    )}
+                                  </div>
+                                )
+                              }
+                              return (
+                                <div key={j} className="flex gap-2 text-sm text-foreground">
+                                  <span className="text-muted-foreground shrink-0">•</span>
+                                  <span>{String(v)}</span>
+                                </div>
+                              )
+                            })
+                          ) : typeof value === 'object' && value !== null ? (
+                            <div className="space-y-1">
+                              {Object.entries(value).map(([k2, v2]: [string, any], j: number) => (
+                                <p key={j} className="text-sm text-foreground"><span className="font-semibold">{k2.replace(/_/g, ' ')}:</span> {String(v2)}</p>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-foreground">{String(value)}</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              ) : (
+                <Card className="border-2 border-border shadow-none bg-card rounded-3xl">
+                  <CardContent className="py-12 text-center">
+                    <p className="text-muted-foreground text-sm italic">Research hub data will appear after full analysis.</p>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           </div>
         </Tabs>

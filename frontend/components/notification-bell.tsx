@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { Bell, Check, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,23 +26,42 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [open, setOpen] = useState(false)
+  const [pollError, setPollError] = useState(false)
   const router = useRouter()
+  const retryCountRef = useRef(0)
+  const intervalRef = useRef<NodeJS.Timeout>()
 
   const fetchNotifications = useCallback(async () => {
+    if (retryCountRef.current >= 5) {
+      setPollError(true)
+      return
+    }
     try {
       const res = await apiFetch("/notifications/")
       setNotifications(res.data?.notifications || [])
       setUnreadCount(res.data?.unread_count || 0)
-    } catch {
-      // silent fail
+      retryCountRef.current = 0 // reset on success
+      setPollError(false)
+    } catch (err: any) {
+      if (err?.message?.includes("429") || err?.message?.includes("Too many")) {
+        retryCountRef.current += 1
+        const backoffMs = [5000, 10000, 30000, 60000, 120000][retryCountRef.current - 1] || 120000
+        if (intervalRef.current) clearInterval(intervalRef.current)
+        intervalRef.current = setTimeout(() => {
+          fetchNotifications()
+          // Resume normal polling after successful backoff
+          intervalRef.current = setInterval(fetchNotifications, 30000) as any
+        }, backoffMs) as any
+        return
+      }
+      // silent fail for other errors
     }
   }, [])
 
   useEffect(() => {
     fetchNotifications()
-    // Poll every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
+    intervalRef.current = setInterval(fetchNotifications, 30000)
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [fetchNotifications])
 
   const markAllRead = async () => {
