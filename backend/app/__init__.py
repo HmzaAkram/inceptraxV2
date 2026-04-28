@@ -60,6 +60,25 @@ def create_app():
     # ─── Extensions ───────────────────────────────────────────────────────
     limiter.init_app(app)
 
+    # ─── CORS Preflight ───────────────────────────────────────────────────
+    @app.before_request
+    def handle_options():
+        if request.method == "OPTIONS":
+            response = app.make_default_options_response()
+            origin = request.headers.get('Origin')
+            allowed = [
+                "https://www.inceptrax.com",
+                "https://inceptrax.com",
+                "http://localhost:3000",
+                "http://localhost:5173",
+            ]
+            if origin in allowed:
+                response.headers['Access-Control-Allow-Origin'] = origin
+                response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+                response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+                response.headers['Access-Control-Allow-Credentials'] = 'true'
+            return response
+
     # ─── Blueprints ───────────────────────────────────────────────────────
     from app.routes.auth_routes import auth_bp
     from app.routes.idea_routes import idea_bp
@@ -70,14 +89,14 @@ def create_app():
     from app.routes.contact_routes import contact_bp
     from app.routes.chat_routes import chat_bp
 
-    app.register_blueprint(auth_bp, url_prefix='/auth')
-    app.register_blueprint(idea_bp, url_prefix='/ideas')
-    app.register_blueprint(user_bp, url_prefix='/users')
-    app.register_blueprint(cofounder_bp, url_prefix='/cofounder')
-    app.register_blueprint(admin_bp, url_prefix='/admin')
-    app.register_blueprint(notification_bp, url_prefix='/notifications')
-    app.register_blueprint(contact_bp)
-    app.register_blueprint(chat_bp, url_prefix='/chat')
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(idea_bp, url_prefix='/api/ideas')
+    app.register_blueprint(user_bp, url_prefix='/api/users')
+    app.register_blueprint(cofounder_bp, url_prefix='/api/cofounder')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(notification_bp, url_prefix='/api/notifications')
+    app.register_blueprint(contact_bp, url_prefix='/api')
+    app.register_blueprint(chat_bp, url_prefix='/api/chat')
 
     # ─── Security Headers ─────────────────────────────────────────────────
     @app.after_request
@@ -92,16 +111,6 @@ def create_app():
         if not app.debug:
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 
-        origin = request.headers.get('Origin')
-        allowed = [
-            "https://www.inceptrax.com",
-            "https://inceptrax.com",
-            "http://localhost:3000",
-            "http://localhost:5173",
-        ]
-        if origin in allowed:
-            response.headers['Access-Control-Allow-Origin'] = origin
-            response.headers['Access-Control-Allow-Credentials'] = 'true'
         return response
 
     # ─── Error Handlers ───────────────────────────────────────────────────
