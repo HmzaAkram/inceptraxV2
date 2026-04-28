@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -33,10 +33,17 @@ def create_app():
     # ─── CORS ─────────────────────────────────────────────────────────────
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
     CORS(app, resources={r"/*": {
-        "origins": [FRONTEND_URL, "http://localhost:3000", "http://127.0.0.1:3000"],
-        "supports_credentials": True,
-        "allow_headers": ["Content-Type", "Authorization"],
-        "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    "origins": [
+        FRONTEND_URL,
+        "https://www.inceptrax.com",
+        "https://inceptrax.com",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+    ],
+    "supports_credentials": True,
+    "allow_headers": ["Content-Type", "Authorization"],
+    "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     }})
 
     # ─── MongoDB ──────────────────────────────────────────────────────────
@@ -85,6 +92,16 @@ def create_app():
         if not app.debug:
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 
+        origin = request.headers.get('Origin')
+        allowed = [
+            "https://www.inceptrax.com",
+            "https://inceptrax.com",
+            "http://localhost:3000",
+            "http://localhost:5173",
+        ]
+        if origin in allowed:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
         return response
 
     # ─── Error Handlers ───────────────────────────────────────────────────
