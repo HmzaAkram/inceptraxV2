@@ -12,13 +12,12 @@ COOKIE_MAX_AGE = 7 * 24 * 60 * 60  # 7 days
 
 def _set_auth_cookie(response, token):
     """Set httpOnly JWT cookie on the response."""
-    # For cross-site (Vercel -> Render), we MUST use samesite='None' and secure=True
     response.set_cookie(
         'access_token',
         value=token,
         httponly=True,
-        secure=True,                  # Render always uses HTTPS
-        samesite='None',              # Required for cross-site cookies
+        secure=IS_PRODUCTION,         # Secure=True only in production (HTTPS)
+        samesite='Lax',               # Lax allows top-level navigations
         max_age=COOKIE_MAX_AGE,
         path='/',
     )
@@ -31,8 +30,8 @@ def _clear_auth_cookie(response):
         'access_token',
         value='',
         httponly=True,
-        secure=True,
-        samesite='None',
+        secure=IS_PRODUCTION,
+        samesite='Lax',
         max_age=0,
         path='/',
     )

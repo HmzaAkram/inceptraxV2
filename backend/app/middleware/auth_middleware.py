@@ -20,7 +20,6 @@ def token_required(f):
                 token = auth_header.split(' ')[1]
 
         if not token:
-            print(f"[Auth] Token missing for {request.path} from {request.remote_addr}. Origin: {request.headers.get('Origin')}")
             return jsonify({'error': 'Authentication required'}), 401
 
         user_id = AuthService.decode_token(token)
