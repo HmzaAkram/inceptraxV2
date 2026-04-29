@@ -13,13 +13,15 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  SheetClose,
 } from "@/components/ui/sheet"
+import { Compass, Sparkles, Info, Mail, LogOut, ChevronRight } from "lucide-react"
 
 const NAV_LINKS = [
-  { label: "Explore", href: "/public-ideas" },
-  { label: "Features", href: "/features" },
-  { label: "About", href: "/about" },
-  { label: "Contact", href: "/contact" },
+  { label: "Explore", href: "/public-ideas", icon: Compass },
+  { label: "Features", href: "/features", icon: Sparkles },
+  { label: "About", href: "/about", icon: Info },
+  { label: "Contact", href: "/contact", icon: Mail },
 ]
 
 export function Navbar() {
@@ -107,25 +109,63 @@ export function Navbar() {
                     <span>Inceptrax</span>
                   </SheetTitle>
                 </SheetHeader>
-                <div className="flex flex-col gap-4 py-8">
+                <div className="flex flex-col gap-1 py-8">
                   {NAV_LINKS.map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {link.label}
-                    </Link>
+                    <SheetClose asChild key={link.href}>
+                      <Link
+                        href={link.href}
+                        className="flex items-center justify-between px-3 py-3 rounded-xl text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200"
+                      >
+                        <span className="flex items-center gap-3">
+                          <link.icon className="h-5 w-5 text-muted-foreground/70" />
+                          {link.label}
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
+                      </Link>
+                    </SheetClose>
                   ))}
-                  <hr className="my-2 border-border" />
-                  {!isAuthenticated && (
+
+                  <div className="my-6 border-t border-border" />
+
+                  {isAuthenticated ? (
+                    <div className="space-y-3">
+                       <SheetClose asChild>
+                        <Link
+                          href="/dashboard"
+                          className="flex items-center gap-3 px-3 py-3 rounded-xl text-base font-semibold text-primary bg-primary/5 hover:bg-primary/10 transition-colors"
+                        >
+                          <LayoutDashboard className="h-5 w-5" />
+                          Go to Dashboard
+                        </Link>
+                      </SheetClose>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start px-3 py-6 h-auto rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/5"
+                        onClick={() => {
+                          // Access auth context logout if possible, or just trigger a redirect/refresh
+                          window.location.href = "/login"
+                        }}
+                      >
+                        <LogOut className="h-5 w-5 mr-3" />
+                        Sign Out
+                      </Button>
+                    </div>
+                  ) : (
                     <div className="flex flex-col gap-3">
-                      <Button variant="outline" className="w-full justify-start" asChild>
-                        <Link href="/login">Sign In</Link>
-                      </Button>
-                      <Button className="w-full justify-start" asChild>
-                        <Link href="/register">Get Started</Link>
-                      </Button>
+                      <SheetClose asChild>
+                        <Link href="/login">
+                          <Button variant="outline" className="w-full h-12 rounded-xl justify-start px-4">
+                            Sign In
+                          </Button>
+                        </Link>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <Link href="/register">
+                          <Button className="w-full h-12 rounded-xl justify-start px-4">
+                            Get Started Free
+                          </Button>
+                        </Link>
+                      </SheetClose>
                     </div>
                   )}
                 </div>

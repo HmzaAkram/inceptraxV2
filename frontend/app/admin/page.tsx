@@ -83,11 +83,11 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Admin Control Center</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Admin Control Center</h1>
         <p className="text-sm text-muted-foreground mt-1">Real-time overview of Inceptrax platform health and growth.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
           <Card key={stat.name} className="border">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -126,7 +126,7 @@ export default function AdminDashboardPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border">
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Used Credits</p>
                 <p className="text-lg font-bold tabular-nums">{stats.api_usage.used}</p>

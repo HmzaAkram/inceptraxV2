@@ -69,19 +69,19 @@ export default function MarketResearchPage() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             Market Research
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Deep-dive into the target market for {idea.title}.
           </p>
         </div>
         <Button
           onClick={handleFetchMarketData}
           disabled={isSearching}
-          className="rounded-xl gap-2 font-semibold"
+          className="rounded-xl gap-2 font-semibold w-full sm:w-auto h-12 sm:h-10"
         >
           {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
           {(searchResults || []).length > 0 ? "Refresh Market Data" : "Fetch Live Market Data"}
@@ -124,7 +124,7 @@ export default function MarketResearchPage() {
       )}
 
       {/* TAM / SAM / SOM */}
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
         {["tam", "sam", "som"].map((key, i) => (
           <Card key={i} className="border-none shadow-sm bg-card/50">
             <CardHeader className="pb-2">
@@ -220,14 +220,14 @@ export default function MarketResearchPage() {
       </div>
 
 
-      <div className="flex justify-between pt-4 pb-8">
-        <Link href={`/dashboard/idea/${params.id}/validation`}>
-          <Button variant="outline" className="gap-2 pl-6 pr-6" size="lg">
+      <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4 pb-8">
+        <Link href={`/dashboard/idea/${params.id}/validation`} className="w-full sm:w-auto">
+          <Button variant="outline" className="gap-2 w-full" size="lg">
             <ArrowLeft className="h-4 w-4" /> Previous
           </Button>
         </Link>
-        <Link href={`/dashboard/idea/${params.id}/competitors`}>
-          <Button className="gap-2 pl-6 pr-6" size="lg">
+        <Link href={`/dashboard/idea/${params.id}/competitors`} className="w-full sm:w-auto">
+          <Button className="gap-2 w-full" size="lg">
             Next: Competitors <ArrowRight className="h-4 w-4" />
           </Button>
         </Link>

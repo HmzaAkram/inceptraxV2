@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { AdminSidebar } from "@/components/admin-sidebar"
+import { AdminMobileNav } from "@/components/admin-mobile-nav"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { useAuth } from "@/components/auth-provider"
 import { useRouter } from "next/navigation"
@@ -35,12 +36,21 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      <AdminSidebar />
-      <div className="flex flex-col flex-grow overflow-hidden">
+    <div className="flex h-screen bg-background overflow-hidden relative">
+      {/* Sidebar — hidden on mobile, visible on md+ */}
+      <aside className="hidden md:flex w-64 shrink-0 border-r border-border">
+        <AdminSidebar />
+      </aside>
+
+      <div className="flex flex-col flex-grow min-w-0 overflow-hidden">
         <DashboardHeader />
-        <main className="flex-grow overflow-y-auto p-8">{children}</main>
+        <main className="flex-grow overflow-y-auto p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">
+          {children}
+        </main>
       </div>
+
+      {/* Admin Mobile Bottom Nav */}
+      <AdminMobileNav />
     </div>
   )
 }

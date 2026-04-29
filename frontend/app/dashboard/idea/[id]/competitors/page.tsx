@@ -48,18 +48,18 @@ export default function CompetitorAnalysisPage() {
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold flex flex-wrap items-center gap-3">
             Competitor Analysis
-            <Link href={`/dashboard/idea/${params.id}/competitor-watch`}>
-              <Button variant="outline" size="sm" className="gap-2 h-8 border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800">
-                <Zap className="h-4 w-4 fill-indigo-500" />
+            <Link href={`/dashboard/idea/${params.id}/competitor-watch`} className="inline-block">
+              <Button variant="outline" size="sm" className="gap-2 h-7 border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 text-[10px] font-bold uppercase tracking-wider">
+                <Zap className="h-3.5 w-3.5 fill-indigo-500" />
                 Live Watch
               </Button>
             </Link>
           </h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-muted-foreground text-sm sm:text-base max-w-2xl">
             Analysis of key competitors, their strengths, weaknesses, and potential threats to your success.
           </p>
         </div>
@@ -163,14 +163,14 @@ export default function CompetitorAnalysisPage() {
       </Card>
 
 
-      <div className="flex justify-between pt-4 pb-8">
-        <Link href={`/dashboard/idea/${params.id}/market`}>
-          <Button variant="outline" className="gap-2 pl-6 pr-6" size="lg">
+      <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4 pb-8">
+        <Link href={`/dashboard/idea/${params.id}/market`} className="w-full sm:w-auto">
+          <Button variant="outline" className="gap-2 w-full" size="lg">
             <ArrowLeft className="h-4 w-4" /> Previous
           </Button>
         </Link>
-        <Link href={`/dashboard/idea/${params.id}/monetization`}>
-          <Button className="gap-2 pl-6 pr-6" size="lg">
+        <Link href={`/dashboard/idea/${params.id}/monetization`} className="w-full sm:w-auto">
+          <Button className="gap-2 w-full" size="lg">
             Next: Monetization <ArrowRight className="h-4 w-4" />
           </Button>
         </Link>

@@ -23,7 +23,7 @@ export function AdminSidebar() {
   const pathname = usePathname()
 
   return (
-    <div className="flex flex-col h-full bg-card border-r border-border w-64 shrink-0 overflow-y-auto">
+    <div className="flex flex-col h-full bg-card border-r border-border w-64 shrink-0 overflow-y-auto hidden md:flex">
       <div className="p-6">
         <Link href="/" className="flex items-center gap-2 font-semibold text-lg">
           <Logo />

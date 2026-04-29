@@ -48,12 +48,12 @@ export default function MonetizationPage() {
 
     return (
         <div className="space-y-8 max-w-5xl mx-auto">
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                         Monetization Strategy
                     </h1>
-                    <p className="text-muted-foreground mt-1">
+                    <p className="text-muted-foreground mt-1 text-sm sm:text-base">
                         Revenue models and pricing strategy for {idea.title}.
                     </p>
                 </div>
@@ -79,7 +79,7 @@ export default function MonetizationPage() {
 
                     <div className="space-y-4">
                         <h3 className="font-semibold text-sm text-foreground">Recommended Plans</h3>
-                        <div className="grid gap-4 md:grid-cols-3">
+                        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                             {(monetization.plans || []).map((plan: any, i: number) => (
                                 <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border">
                                     <div className="flex justify-between items-start mb-2">
@@ -112,14 +112,14 @@ export default function MonetizationPage() {
                 </CardContent>
             </Card>
 
-            <div className="flex justify-between pt-4 pb-8">
-                <Link href={`/dashboard/idea/${params.id}/competitors`}>
-                    <Button variant="outline" className="gap-2 pl-6 pr-6" size="lg">
+            <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4 pb-8">
+                <Link href={`/dashboard/idea/${params.id}/competitors`} className="w-full sm:w-auto">
+                    <Button variant="outline" className="gap-2 w-full" size="lg">
                         <ArrowLeft className="h-4 w-4" /> Previous
                     </Button>
                 </Link>
-                <Link href={`/dashboard/idea/${params.id}/mvp-blueprint`}>
-                    <Button className="gap-2 pl-6 pr-6" size="lg">
+                <Link href={`/dashboard/idea/${params.id}/mvp-blueprint`} className="w-full sm:w-auto">
+                    <Button className="gap-2 w-full" size="lg">
                         Next: MVP Blueprint <ArrowRight className="h-4 w-4" />
                     </Button>
                 </Link>
