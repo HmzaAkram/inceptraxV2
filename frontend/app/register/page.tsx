@@ -132,7 +132,7 @@ export default function RegisterPage() {
       <div className="hidden lg:flex w-1/2 bg-primary p-12 flex-col justify-between text-primary-foreground relative overflow-hidden">
         <div className="relative z-10">
           <Link href="/" className="flex items-center gap-2 font-semibold text-xl mb-12 transition-opacity hover:opacity-80">
-            <Logo size={40} />
+            <Logo size={40} src="/logo2.png" />
             <span>Inceptrax</span>
           </Link>
           <h2 className="text-4xl font-bold mb-8 leading-tight">
