@@ -103,23 +103,27 @@ export default function IdeaValidationPage() {
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* Header + Score */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-3 mb-2">
             <Badge variant="secondary">Validation Report</Badge>
-            <span className="text-sm text-muted-foreground">Generated {new Date(idea.created_at).toLocaleDateString()}</span>
+            <span className="text-xs sm:text-sm text-muted-foreground">Generated {new Date(idea.created_at).toLocaleDateString()}</span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{idea.title} Analysis</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{idea.pitch}</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate">{idea.title} Analysis</h1>
+          <p className="text-muted-foreground mt-2 text-sm line-clamp-2 sm:line-clamp-none">{idea.pitch}</p>
         </div>
 
-        <div className="bg-card border rounded-2xl p-5 flex flex-col items-center gap-1 shrink-0 min-w-[140px]">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Overall Score</p>
-          <span className={cn("text-5xl font-bold tabular-nums tracking-tight transition-colors duration-500", getScoreColor(finalScore))}>
-            {displayScore}
-          </span>
-          <span className="text-xs text-muted-foreground">/ 100</span>
-          {showVerdict && <span className={cn("text-xs font-medium mt-1", verdict.colorClass)}>{verdict.text}</span>}
+        <div className="bg-card border rounded-2xl p-5 flex flex-row sm:flex-col items-center justify-center gap-4 sm:gap-1 shrink-0 w-full sm:w-auto min-w-[140px] shadow-sm">
+          <div className="flex flex-col items-center sm:items-center">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Overall Score</p>
+            <div className="flex items-baseline gap-1">
+              <span className={cn("text-4xl sm:text-5xl font-bold tabular-nums tracking-tight transition-colors duration-500", getScoreColor(finalScore))}>
+                {displayScore}
+              </span>
+              <span className="text-xs text-muted-foreground">/100</span>
+            </div>
+          </div>
+          {showVerdict && <span className={cn("text-xs font-semibold px-2 py-1 rounded-full bg-muted/50 sm:bg-transparent", verdict.colorClass)}>{verdict.text}</span>}
         </div>
       </div>
 
@@ -152,7 +156,7 @@ export default function IdeaValidationPage() {
       </div>
 
       {/* Strengths & Risks */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         <div data-reveal className="rounded-xl border bg-card p-6 space-y-4">
           <h3 className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-5 w-5 text-green-500" /> Key Strengths</h3>
           <div className="space-y-3">

@@ -77,7 +77,7 @@ export function DashboardHeader() {
 
   return (
     <>
-      <header className="h-16 shrink-0 border-b border-border bg-background/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-40">
+      <header className="h-16 shrink-0 border-b border-border bg-background/80 backdrop-blur-md px-4 md:px-6 flex items-center justify-between sticky top-0 z-40">
         {/* Command search trigger */}
         <div className="flex-grow max-w-md">
           <button
@@ -94,7 +94,8 @@ export function DashboardHeader() {
           >
             <span className="flex items-center gap-2">
               <Search className="h-3.5 w-3.5 shrink-0" />
-              <span className="text-sm">Search or ask AI…</span>
+              <span className="text-sm sm:inline hidden">Search or ask AI…</span>
+              <span className="text-sm sm:hidden inline">Search…</span>
             </span>
             <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground shadow-xs">
               ⌘K

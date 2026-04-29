@@ -105,16 +105,16 @@ export default function DashboardPage() {
   return (
     <div ref={pageRef} className="space-y-8 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between pt-1">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pt-1">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
             Welcome back, {user?.first_name || "Founder"} 👋
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Here&apos;s an overview of your ideas and progress.
           </p>
         </div>
-        <Button asChild className="gap-2 shrink-0">
+        <Button asChild className="gap-2 shrink-0 w-full sm:w-auto">
           <Link href="/dashboard/new-idea">
             <Plus className="h-4 w-4" /> New Idea
           </Link>
@@ -172,7 +172,7 @@ export default function DashboardPage() {
                     <div
                       key={idea.id}
                       className={cn(
-                        "group flex items-center justify-between px-6 py-4 transition-colors duration-150",
+                        "group flex items-center justify-between px-4 sm:px-6 py-4 transition-colors duration-150",
                         isFailed
                           ? "bg-red-50/50 dark:bg-red-950/10"
                           : isProcessing

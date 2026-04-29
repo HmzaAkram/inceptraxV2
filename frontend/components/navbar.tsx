@@ -6,7 +6,21 @@ import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
 import { useAuth } from "@/components/auth-provider"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard } from "lucide-react"
+import { LayoutDashboard, Menu } from "lucide-react"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
+
+const NAV_LINKS = [
+  { label: "Explore", href: "/public-ideas" },
+  { label: "Features", href: "/features" },
+  { label: "About", href: "/about" },
+  { label: "Contact", href: "/contact" },
+]
 
 export function Navbar() {
   const { user, isAuthenticated, loading } = useAuth()
@@ -30,27 +44,24 @@ export function Navbar() {
       )}
     >
       <div className="container h-full flex items-center justify-between px-4 mx-auto">
-        <Link href="/" className="flex items-center gap-2 font-bold text-xl transition-opacity hover:opacity-80">
-          <Logo />
-          <span>Inceptrax</span>
-        </Link>
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-2 font-bold text-xl transition-opacity hover:opacity-80">
+            <Logo />
+            <span>Inceptrax</span>
+          </Link>
 
-        <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
-          {[
-            { label: "Explore", href: "/public-ideas" },
-            { label: "Features", href: "/features" },
-            { label: "About", href: "/about" },
-            { label: "Contact", href: "/contact" },
-          ].map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-muted-foreground hover:text-foreground transition-colors duration-150"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-muted-foreground hover:text-foreground transition-colors duration-150"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
 
         <div className="flex items-center gap-3">
           {!loading && (
@@ -68,7 +79,7 @@ export function Navbar() {
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-2">
                   <Button variant="ghost" size="sm" className="text-xs px-3" asChild>
                     <Link href="/login">Sign In</Link>
                   </Button>
@@ -79,6 +90,48 @@ export function Navbar() {
               )}
             </>
           )}
+
+          {/* Mobile Menu */}
+          <div className="md:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Toggle menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[280px] sm:w-[350px]">
+                <SheetHeader className="text-left pb-6 border-b">
+                  <SheetTitle className="flex items-center gap-2">
+                    <Logo />
+                    <span>Inceptrax</span>
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col gap-4 py-8">
+                  {NAV_LINKS.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                  <hr className="my-2 border-border" />
+                  {!isAuthenticated && (
+                    <div className="flex flex-col gap-3">
+                      <Button variant="outline" className="w-full justify-start" asChild>
+                        <Link href="/login">Sign In</Link>
+                      </Button>
+                      <Button className="w-full justify-start" asChild>
+                        <Link href="/register">Get Started</Link>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </div>
     </header>

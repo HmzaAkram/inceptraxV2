@@ -182,10 +182,19 @@
     background: var(--muted-foreground);
   }
 
-  /* Typography scale */
-  h1 { @apply text-3xl font-bold tracking-tight leading-tight; }
-  h2 { @apply text-2xl font-semibold tracking-tight leading-tight; }
-  h3 { @apply text-lg font-semibold leading-snug; }
+  /* Typography scale — Fluid & Responsive */
+  h1 {
+    @apply font-bold tracking-tight leading-[1.1];
+    font-size: clamp(1.875rem, 5vw, 3rem); /* 30px to 48px */
+  }
+  h2 {
+    @apply font-semibold tracking-tight leading-[1.2];
+    font-size: clamp(1.5rem, 4vw, 2.25rem); /* 24px to 36px */
+  }
+  h3 {
+    @apply font-semibold leading-snug;
+    font-size: clamp(1.25rem, 3vw, 1.5rem); /* 20px to 24px */
+  }
   h4 { @apply text-base font-semibold; }
 
   /* Selection */

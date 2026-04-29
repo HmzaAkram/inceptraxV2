@@ -398,7 +398,7 @@ export default function NewIdeaPage() {
         )}
 
         <Card className="border-none overflow-hidden rounded-2xl shadow-2xl bg-gradient-to-br from-white/70 to-primary/10 dark:from-card dark:to-primary/10">
-          <CardContent className="p-10 space-y-8">
+          <CardContent className="p-6 sm:p-10 space-y-8">
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <Label htmlFor="title" className="text-sm font-bold uppercase text-muted-foreground">Startup Name / Working Title</Label>
@@ -538,22 +538,22 @@ export default function NewIdeaPage() {
   // RENDER: Chatting Phase
   // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-4xl mx-auto py-6 px-4 flex flex-col h-[calc(100vh-80px)]">
-      <div className="flex items-center justify-between mb-4">
+    <div className="max-w-4xl mx-auto py-4 sm:py-6 px-4 flex flex-col h-[calc(100vh-120px)] sm:h-[calc(100vh-80px)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-md">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-md shrink-0">
             <Layers className="h-5 w-5 text-white" />
           </div>
-          <div>
-            <h1 className="text-lg font-bold">Refining Your Idea</h1>
-            <p className="text-xs text-muted-foreground truncate max-w-xs">{formData.title || "Startup Concept"}</p>
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-bold truncate">Refining Your Idea</h1>
+            <p className="text-xs text-muted-foreground truncate max-w-[200px] sm:max-w-xs">{formData.title || "Startup Concept"}</p>
           </div>
         </div>
         {isReady && (
           <Button
             onClick={handleFinalize}
             disabled={isLoading}
-            className="rounded-xl gap-2 font-semibold bg-gradient-to-r from-green-600 to-emerald-600 hover:scale-105 text-white shadow-lg transition-transform animate-bounce"
+            className="rounded-xl gap-2 font-semibold bg-gradient-to-r from-green-600 to-emerald-600 sm:hover:scale-105 text-white shadow-lg transition-transform sm:animate-bounce w-full sm:w-auto"
           >
             <Rocket className="h-4 w-4" /> Start Final Analysis
           </Button>
@@ -574,7 +574,7 @@ export default function NewIdeaPage() {
               />
               <div className="flex items-center gap-1">
                 {isCompleted ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : isActive ? <Circle className="h-3 w-3 text-primary animate-pulse" /> : <Circle className="h-3 w-3 text-muted-foreground/40" />}
-                <span className={cn("text-[10px] font-medium uppercase tracking-wider", isCompleted ? "text-green-600" : isActive ? "text-primary font-bold" : "text-muted-foreground/60")}>
+                <span className={cn("text-[9px] sm:text-[10px] font-medium uppercase tracking-wider hidden xs:inline", isCompleted ? "text-green-600" : isActive ? "text-primary font-bold" : "text-muted-foreground/60")}>
                   {l.label}
                 </span>
               </div>

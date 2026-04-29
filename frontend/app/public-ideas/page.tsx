@@ -59,7 +59,7 @@ export default function PublicIdeasGallery() {
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-[0.2em]">
                            🏆 Top Ideas
                         </div>
-                        <h1 className="text-5xl md:text-6xl font-black tracking-tighter leading-none">
+                        <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tighter leading-none">
                             Most Viewed Ideas.<br />
                             <span className="text-muted-foreground">Community Favorites.</span>
                         </h1>
@@ -133,9 +133,9 @@ export default function PublicIdeasGallery() {
                     )}
 
                     {/* Footer CTA */}
-                    <div className="rounded-[3rem] p-16 text-center bg-primary text-primary-foreground mt-24">
+                    <div className="rounded-[2rem] sm:rounded-[3rem] p-8 sm:p-16 text-center bg-primary text-primary-foreground mt-24">
                         <div className="max-w-2xl mx-auto space-y-8">
-                            <h2 className="text-4xl md:text-5xl font-black tracking-tighter">Your ideas deserve to be built.</h2>
+                            <h2 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tighter">Your ideas deserve to be built.</h2>
                             <p className="text-primary-foreground/80 text-lg font-medium">
                                 Join 5,000+ founders using Inceptrax to validate, plan, and launch their startups.
                             </p>
