@@ -128,7 +128,7 @@ export function Navbar() {
                   <div className="my-6 border-t border-border" />
 
                   {isAuthenticated ? (
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                        <SheetClose asChild>
                         <Link
                           href="/dashboard"
@@ -151,7 +151,7 @@ export function Navbar() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-4">
                       <SheetClose asChild>
                         <Link href="/login">
                           <Button variant="outline" className="w-full h-12 rounded-xl justify-start px-4">

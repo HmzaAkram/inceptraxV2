@@ -5,7 +5,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Sparkles, ArrowLeft, Check, Loader2, Eye, EyeOff, X } from "lucide-react"
+import { Logo } from "@/components/logo"
+import { ArrowLeft, Check, Loader2, Eye, EyeOff, X } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
 import { toast } from "sonner"
@@ -130,10 +131,8 @@ export default function RegisterPage() {
       {/* Left Side: Features Checklist */}
       <div className="hidden lg:flex w-1/2 bg-primary p-12 flex-col justify-between text-primary-foreground relative overflow-hidden">
         <div className="relative z-10">
-          <Link href="/" className="flex items-center gap-2 font-semibold text-xl mb-12">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-primary">
-              <Sparkles className="h-6 w-6" />
-            </div>
+          <Link href="/" className="flex items-center gap-2 font-semibold text-xl mb-12 transition-opacity hover:opacity-80">
+            <Logo size={40} />
             <span>Inceptrax</span>
           </Link>
           <h2 className="text-4xl font-bold mb-8 leading-tight">
