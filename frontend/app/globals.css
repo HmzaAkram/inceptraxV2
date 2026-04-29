@@ -134,6 +134,20 @@
     @apply mx-auto;
   }
 
+  /* Typography scale — Fluid & Responsive */
+  h1 {
+    @apply font-bold tracking-tight leading-[1.1];
+    font-size: clamp(2rem, 8vw, 3.5rem);
+  }
+  h2 {
+    @apply font-semibold tracking-tight leading-[1.2];
+    font-size: clamp(1.5rem, 6vw, 2.5rem);
+  }
+  h3 {
+    @apply font-semibold leading-snug;
+    font-size: clamp(1.25rem, 4vw, 1.75rem);
+  }
+
   ::selection {
     background-color: var(--primary);
     color: var(--primary-foreground);
@@ -191,6 +205,20 @@
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: oklch(0.5 0 0);
+  }
+
+  /* Mobile Bottom Nav Fix */
+  .mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background-color: color-mix(in oklch, var(--background) 95%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 

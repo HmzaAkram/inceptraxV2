@@ -9,15 +9,15 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-screen bg-background overflow-hidden relative">
       {/* Sidebar — hidden on mobile, visible on md+ */}
-      <div className="hidden md:flex">
+      <aside className="hidden md:flex w-60 shrink-0 border-r border-border">
         <DashboardSidebar />
-      </div>
+      </aside>
 
-      <div className="flex flex-col flex-grow overflow-hidden">
+      <div className="flex flex-col flex-grow min-w-0 overflow-hidden">
         <DashboardHeader />
-        <main className="flex-grow overflow-y-auto p-4 md:p-6 animate-fade-in pb-20 md:pb-6">
+        <main className="flex-grow overflow-y-auto p-4 md:p-6 animate-fade-in pb-24 md:pb-6">
           {children}
         </main>
       </div>

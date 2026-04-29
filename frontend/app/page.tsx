@@ -94,7 +94,7 @@ export default function LandingPage() {
               AI-powered startup analysis · 8 deep stages
             </div>
 
-            <h1 data-reveal className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight tracking-tight text-balance mb-6">
+            <h1 data-reveal className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold text-foreground leading-[1.1] tracking-tight text-balance mb-6">
               Validate your startup idea{" "}
               <span className="underline underline-offset-4 decoration-foreground/30">before you build</span>
             </h1>
